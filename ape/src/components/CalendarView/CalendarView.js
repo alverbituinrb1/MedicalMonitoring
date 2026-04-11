@@ -4,17 +4,35 @@ import './CalendarView.css';
 const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   const [activeTab, setActiveTab] = useState('medical');
   const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState('All');
+  const currentMonthNumber = new Date().getMonth() + 1;
+  const normalizedMedicalSchedule = [...medicalSchedule].sort((left, right) => {
+    if (left.daysUntil !== right.daysUntil) return left.daysUntil - right.daysUntil;
+    return left.name.localeCompare(right.name);
+  });
 
   const scheduleGroups = {
-    overdue: medicalSchedule.filter((item) => item.status === 'Overdue'),
-    dueSoon: medicalSchedule.filter((item) => item.status === 'Due Soon'),
-    upcoming: medicalSchedule.filter((item) => item.status === 'Healthy').slice(0, 12)
+    overdue: normalizedMedicalSchedule.filter((item) => item.status === 'Overdue'),
+    dueSoon: normalizedMedicalSchedule.filter((item) => item.status === 'Due Soon'),
+    upcoming: normalizedMedicalSchedule.filter((item) => item.status === 'Healthy').slice(0, 12)
   };
 
   const totalBirthdays = birthdaysByMonth.reduce((total, month) => total + month.count, 0);
-  const displayedBirthdayGroups = selectedBirthdayMonth === 'All'
-    ? birthdaysByMonth
-    : birthdaysByMonth.filter((group) => String(group.monthNumber) === selectedBirthdayMonth);
+  const normalizedBirthdayGroups = birthdaysByMonth.map((group) => ({
+    ...group,
+    entries: [...group.entries].sort((left, right) => {
+      if (left.day !== right.day) return left.day - right.day;
+      return left.name.localeCompare(right.name);
+    })
+  }));
+  const displayedBirthdayGroups = (selectedBirthdayMonth === 'All'
+    ? normalizedBirthdayGroups
+    : normalizedBirthdayGroups.filter((group) => String(group.monthNumber) === selectedBirthdayMonth))
+    .sort((left, right) => {
+      if (selectedBirthdayMonth !== 'All') return left.monthNumber - right.monthNumber;
+      const leftOffset = (left.monthNumber - currentMonthNumber + 12) % 12;
+      const rightOffset = (right.monthNumber - currentMonthNumber + 12) % 12;
+      return leftOffset - rightOffset;
+    });
 
   return (
     <div className="calendar-view fade-in">
@@ -74,6 +92,24 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               <div>
                 <h2>Medical Schedule Tracking</h2>
                 <span className="panel-subtitle">Upcoming and pending evaluations</span>
+              </div>
+            </div>
+
+            <div className="medical-insight-row">
+              <div className="medical-insight-card overdue">
+                <span className="medical-insight-label">Needs Immediate Action</span>
+                <strong>{scheduleGroups.overdue.length}</strong>
+                <p>Personnel whose target exam date has already passed.</p>
+              </div>
+              <div className="medical-insight-card due-soon">
+                <span className="medical-insight-label">Due Within 30 Days</span>
+                <strong>{scheduleGroups.dueSoon.length}</strong>
+                <p>Personnel who should be scheduled very soon.</p>
+              </div>
+              <div className="medical-insight-card upcoming">
+                <span className="medical-insight-label">On Track</span>
+                <strong>{scheduleGroups.upcoming.length}</strong>
+                <p>Personnel currently scheduled ahead of deadline.</p>
               </div>
             </div>
 
@@ -137,6 +173,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
                       </div>
                       <div className="item-action">
                         <div className="calendar-item-date">{item.nextMedicalDate}</div>
+                        <div className="calendar-days-late neutral">{item.daysUntil} days ahead</div>
                       </div>
                     </div>
                   )) : <div className="calendar-empty">No upcoming schedules.</div>}
@@ -179,14 +216,17 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               {displayedBirthdayGroups.map((group) => (
                 <div key={group.month} className="calendar-month-card">
                   <div className="calendar-month-header">
-                    <h3>{group.month}</h3>
-                    <span className="month-count">{group.count}</span>
+                    <div className="calendar-month-title">
+                      <h3>{group.month}</h3>
+                      <p>{group.count} celebrator{group.count === 1 ? '' : 's'}</p>
+                    </div>
+                    <span className="month-count">{String(group.monthNumber).padStart(2, '0')}</span>
                   </div>
                   {group.entries.length > 0 ? (
                     <div className="calendar-month-list">
                       {group.entries.map((entry) => (
                         <div key={entry.id} className="calendar-month-entry">
-                          <div className="calendar-month-day">{entry.day}</div>
+                          <div className="calendar-month-day">{String(entry.day).padStart(2, '0')}</div>
                           <div className="entry-details">
                             <div className="calendar-item-name">{entry.name}</div>
                             <div className="calendar-item-meta">{entry.agency} • {entry.unit}</div>

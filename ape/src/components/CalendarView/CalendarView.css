@@ -206,11 +206,61 @@
   gap: 20px;
 }
 
+.medical-insight-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.medical-insight-card {
+  border-radius: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 23, 0.32);
+}
+
+.medical-insight-card strong {
+  display: block;
+  margin-top: 10px;
+  color: #f8fafc;
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.medical-insight-card p {
+  margin: 10px 0 0 0;
+  color: #94a3b8;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.medical-insight-card.overdue {
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.medical-insight-card.due-soon {
+  border-color: rgba(250, 204, 21, 0.2);
+}
+
+.medical-insight-card.upcoming {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.medical-insight-label {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .calendar-schedule-column {
   background: rgba(2, 6, 23, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 18px;
   padding: 20px;
+  min-height: 100%;
 }
 
 .column-header {
@@ -258,7 +308,7 @@
 .calendar-month-entry {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 16px;
   border-radius: 14px;
@@ -279,6 +329,7 @@
 .calendar-schedule-item.neutral { border-left: 4px solid #3b82f6; }
 
 .item-details {
+  min-width: 0;
   flex: 1;
 }
 
@@ -286,16 +337,21 @@
   color: #f8fafc;
   font-weight: 700;
   font-size: 1.05rem;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .calendar-item-meta {
   margin-top: 4px;
   color: #94a3b8;
   font-size: 0.85rem;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .item-action {
   text-align: right;
+  flex-shrink: 0;
 }
 
 .calendar-item-date {
@@ -314,10 +370,14 @@
   color: #fde047;
 }
 
+.calendar-days-late.neutral {
+  color: #93c5fd;
+}
+
 .calendar-birthday-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
 }
 
 .birthday-filter-row {
@@ -351,47 +411,64 @@
 
 .calendar-month-card {
   border-radius: 20px;
-  padding: 20px;
+  padding: 22px;
   background: rgba(2, 6, 23, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  min-height: 200px;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.18);
 }
 
 .calendar-month-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 16px;
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  padding-bottom: 12px;
+  padding-bottom: 14px;
+  gap: 14px;
+}
+
+.calendar-month-title {
+  min-width: 0;
+}
+
+.calendar-month-title p {
+  margin: 6px 0 0 0;
+  color: #94a3b8;
+  font-size: 0.86rem;
 }
 
 .calendar-month-header h3 {
   margin: 0;
   color: #f8fafc;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  line-height: 1.2;
 }
 
 .month-count {
-  min-width: 32px;
-  height: 32px;
-  border-radius: 999px;
+  min-width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
   font-weight: 700;
   font-size: 0.95rem;
+  border: 1px solid rgba(96, 165, 250, 0.18);
 }
 
 .calendar-month-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 300px;
+  max-height: 380px;
   overflow-y: auto;
   padding-right: 5px;
+  flex: 1;
 }
 
 .calendar-month-list::-webkit-scrollbar {
@@ -406,21 +483,39 @@
 }
 
 .calendar-month-entry {
-  padding: 12px 14px;
+  padding: 14px 16px;
+  align-items: flex-start;
 }
 
 .calendar-month-day {
-  min-width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  min-width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
   color: #6ee7b7;
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1rem;
   border: 1px solid rgba(16, 185, 129, 0.2);
+  flex-shrink: 0;
+}
+
+.entry-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.entry-details .calendar-item-name {
+  line-height: 1.35;
+  word-break: break-word;
+  font-size: 0.98rem;
+}
+
+.entry-details .calendar-item-meta {
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .calendar-empty {
@@ -432,6 +527,10 @@
 }
 
 @media (max-width: 1024px) {
+  .medical-insight-row {
+    grid-template-columns: 1fr;
+  }
+
   .calendar-schedule-columns {
     grid-template-columns: 1fr;
   }
@@ -450,5 +549,21 @@
 
   .calendar-tabs {
     flex-wrap: wrap;
+  }
+
+  .calendar-birthday-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-month-entry {
+    gap: 12px;
+  }
+
+  .calendar-schedule-item {
+    gap: 12px;
+  }
+
+  .item-action {
+    text-align: left;
   }
 }
