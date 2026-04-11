@@ -3,6 +3,7 @@ import './CalendarView.css';
 
 const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   const [activeTab, setActiveTab] = useState('medical');
+  const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState('All');
 
   const scheduleGroups = {
     overdue: medicalSchedule.filter((item) => item.status === 'Overdue'),
@@ -11,6 +12,9 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   };
 
   const totalBirthdays = birthdaysByMonth.reduce((total, month) => total + month.count, 0);
+  const displayedBirthdayGroups = selectedBirthdayMonth === 'All'
+    ? birthdaysByMonth
+    : birthdaysByMonth.filter((group) => String(group.monthNumber) === selectedBirthdayMonth);
 
   return (
     <div className="calendar-view fade-in">
@@ -151,8 +155,28 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               </div>
             </div>
 
-            <div className="calendar-birthday-grid">
+            <div className="birthday-filter-row">
+              <button
+                type="button"
+                className={`birthday-filter-chip ${selectedBirthdayMonth === 'All' ? 'active' : ''}`}
+                onClick={() => setSelectedBirthdayMonth('All')}
+              >
+                All Months
+              </button>
               {birthdaysByMonth.map((group) => (
+                <button
+                  key={group.month}
+                  type="button"
+                  className={`birthday-filter-chip ${selectedBirthdayMonth === String(group.monthNumber) ? 'active' : ''}`}
+                  onClick={() => setSelectedBirthdayMonth(String(group.monthNumber))}
+                >
+                  {group.month}
+                </button>
+              ))}
+            </div>
+
+            <div className="calendar-birthday-grid">
+              {displayedBirthdayGroups.map((group) => (
                 <div key={group.month} className="calendar-month-card">
                   <div className="calendar-month-header">
                     <h3>{group.month}</h3>

@@ -695,6 +695,96 @@ td {
   color: #f87171;
 }
 
+.focused-status-panel {
+  margin-bottom: 28px;
+}
+
+.focused-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.focused-status-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 23, 0.34);
+  color: #e2e8f0;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.focused-status-item:hover {
+  transform: translateY(-2px);
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.focused-status-item.due-soon {
+  border-color: rgba(250, 204, 21, 0.28);
+}
+
+.focused-status-item.overdue {
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.focused-status-item.healthy {
+  border-color: rgba(74, 222, 128, 0.28);
+}
+
+.focused-status-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.focused-status-main strong {
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.focused-status-main span {
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.focused-status-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: right;
+}
+
+.focused-status-side span {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.focused-status-side small {
+  color: #94a3b8;
+}
+
+.status-badge-pill.warning {
+  color: #fde68a;
+  background: rgba(250, 204, 21, 0.12);
+}
+
+.status-badge-pill.danger {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.status-badge-pill.safe {
+  color: #bbf7d0;
+  background: rgba(74, 222, 128, 0.12);
+}
+
 tbody tr {
   transition: all 0.3s ease;
 }
@@ -1255,4 +1345,6 @@ tbody tr:hover {
   .birthday-overview-header { flex-direction: column; align-items: flex-start; }
   .birthday-grid { grid-template-columns: 1fr; }
   .table-container { overflow-x: auto; }
+  .focused-status-item { flex-direction: column; align-items: flex-start; }
+  .focused-status-side { text-align: left; }
 }

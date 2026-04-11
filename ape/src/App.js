@@ -592,7 +592,6 @@ function App() {
           <Dashboard 
             personnelList={personnelList} 
             archivedPersonnel={archivedPersonnel}
-            birthdaysByMonth={birthdaysByMonth}
             medicalSchedule={medicalSchedule}
             onDeletePersonnel={deletePersonnel} 
             onArchivePersonnel={archivePersonnel}
@@ -604,6 +603,24 @@ function App() {
             currentUser={currentUser}
             backendStatus={backendStatus}
             dataSource={dataSource}
+            viewMode="dashboard"
+          />
+        ) : currentView === 'personnel-list' ? (
+          <Dashboard 
+            personnelList={personnelList} 
+            archivedPersonnel={archivedPersonnel}
+            medicalSchedule={medicalSchedule}
+            onDeletePersonnel={deletePersonnel} 
+            onArchivePersonnel={archivePersonnel}
+            onUnarchivePersonnel={unarchivePersonnel}
+            onDeleteArchived={deleteArchived}
+            onUpdatePersonnel={updatePersonnel} 
+            onImportCsv={importPersonnelCsv}
+            onExportCsv={exportPersonnelCsv}
+            currentUser={currentUser}
+            backendStatus={backendStatus}
+            dataSource={dataSource}
+            viewMode="personnel-list"
           />
         ) : currentView === 'calendar' ? (
           <CalendarView

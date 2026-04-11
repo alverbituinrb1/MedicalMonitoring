@@ -120,7 +120,6 @@ const monthNumberFromBirthday = (birthday) => {
 const Dashboard = ({
   personnelList,
   archivedPersonnel,
-  birthdaysByMonth,
   medicalSchedule,
   onDeletePersonnel,
   onArchivePersonnel,
@@ -131,7 +130,8 @@ const Dashboard = ({
   onExportCsv,
   currentUser,
   backendStatus,
-  dataSource
+  dataSource,
+  viewMode = 'dashboard'
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonth, setFilterMonth] = useState('All');
@@ -151,7 +151,6 @@ const Dashboard = ({
   const [sortArchived, setSortArchived] = useState('newest');
   const [showSummary, setShowSummary] = useState(false);
   const tableSectionRef = useRef(null);
-  const birthdayGroups = birthdaysByMonth || [];
   const nextMedicalSchedules = medicalSchedule || [];
 
   const getProfiles = (personnel) => {
@@ -244,6 +243,11 @@ const Dashboard = ({
   const dueSoonSchedules = nextMedicalSchedules.filter((item) => item.status === 'Due Soon');
   const overdueSchedules = nextMedicalSchedules.filter((item) => item.status === 'Overdue');
   const upcomingSchedules = nextMedicalSchedules.filter((item) => item.status === 'Healthy').slice(0, 6);
+  const statusFocusedPersonnel = filterStatus === 'Both'
+    ? []
+    : personnelWithStatus
+      .filter((person) => person.computedStatus === filterStatus)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleUpdateRecord = () => {
     if (!editDate) {
@@ -299,17 +303,16 @@ const Dashboard = ({
     });
   };
 
+  React.useEffect(() => {
+    if (viewMode === 'personnel-list') {
+      jumpToPersonnelList();
+    }
+  }, [viewMode]);
+
   const handleStatusCardClick = (status) => {
     setFilterStatus((current) => (current === status ? 'Both' : status));
     jumpToPersonnelList();
   };
-
-  const handleMonthCardClick = (monthNumber) => {
-    setFilterMonth((current) => (current === monthNumber ? 'All' : monthNumber));
-    jumpToPersonnelList();
-  };
-
-
 
   return (
     <div className="dashboard-container">
@@ -483,7 +486,7 @@ const Dashboard = ({
         </div>
       )}
 
-      {!showArchived && currentUser?.role === 'admin' && (
+      {!showArchived && currentUser?.role === 'admin' && viewMode !== 'personnel-list' && (
         <div className="stats-grid" style={{ cursor: 'pointer' }}>
           <div 
             className="stat-card healthy"
@@ -515,182 +518,197 @@ const Dashboard = ({
         </div>
       )}
 
-      {!showArchived && (
-        <div className="birthday-overview">
-          <div className="birthday-overview-header">
-            <h2>Birthday Calendar</h2>
-            <p>Click a month to filter the table by personnel birthdays.</p>
+      {!showArchived && viewMode !== 'personnel-list' && filterStatus !== 'Both' && (
+        <section className="overview-panel focused-status-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-kicker">Focused List</p>
+              <h2>{filterStatus} Personnel</h2>
+            </div>
+            <span className={`panel-badge ${filterStatus === 'Overdue' ? 'status-badge-pill danger' : filterStatus === 'Due Soon' ? 'status-badge-pill warning' : 'status-badge-pill safe'}`}>
+              {statusFocusedPersonnel.length} records
+            </span>
           </div>
-          <div className="birthday-grid">
-            {birthdayGroups.map((group) => (
-              <button
-                key={group.month}
-                type="button"
-                className={`birthday-card ${filterMonth === String(group.monthNumber).padStart(2, '0') ? 'active' : ''}`}
-                onClick={() => handleMonthCardClick(String(group.monthNumber).padStart(2, '0'))}
-              >
-                <div className="birthday-card-header">
-                  <h3>{group.month}</h3>
-                  <span>{group.count}</span>
-                </div>
-                {group.entries.length > 0 ? (
-                  <div className="birthday-list">
-                    {group.entries.map((entry) => (
-                      <div key={entry.id} className="birthday-entry">
-                        <div className="birthday-day">{entry.day}</div>
-                        <div className="birthday-meta">
-                          <div className="birthday-name">{entry.name}</div>
-                          <div className="birthday-subtext">{entry.agency} • {entry.unit}</div>
-                        </div>
-                      </div>
-                    ))}
+          <p className="panel-description">
+            {filterStatus === 'Overdue'
+              ? 'Personnel whose medical exam target date has already passed.'
+              : filterStatus === 'Due Soon'
+                ? 'Personnel who need attention within the next 30 days.'
+                : 'Personnel currently marked healthy and on schedule.'}
+          </p>
+          <div className="focused-status-list">
+            {statusFocusedPersonnel.length > 0 ? (
+              statusFocusedPersonnel.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  className={`focused-status-item ${person.computedStatus.replace(/\s+/g, '-').toLowerCase()}`}
+                  onClick={() => {
+                    setSelectedPersonnel(person);
+                    const profiles = getProfiles(person);
+                    setActiveProfile(profiles.length > 0 ? profiles[profiles.length - 1] : null);
+                    setEditPhysicalFitnessStatus(person.physicalFitnessStatus || person.physicalFitness?.capability || 'Personal Fitness 1: Fully Exercise');
+                    setEditFitnessCategory('Auto');
+                  }}
+                >
+                  <div className="focused-status-main">
+                    <strong>{person.name}</strong>
+                    <span>{person.agency || 'N/A'} / {person.unit || 'N/A'}</span>
                   </div>
-                ) : (
-                  <div className="birthday-empty">No birthdays recorded.</div>
-                )}
-              </button>
-            ))}
+                  <div className="focused-status-side">
+                    <span>{person.nextMedicalDate}</span>
+                    <small>{person.findings || 'Complete'}</small>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="calendar-empty">No personnel match this status right now.</div>
+            )}
           </div>
-        </div>
+        </section>
       )}
 
-      <div ref={tableSectionRef} className="records-section-header">
-        <div>
-          <p className="panel-kicker">{showArchived ? 'Trashbin' : 'Records Table'}</p>
-          <h2>{showArchived ? 'Trashbin Records' : (filterMonth !== 'All' ? `${birthdayGroups.find((group) => String(group.monthNumber).padStart(2, '0') === filterMonth)?.month || 'Selected'} Birthdays` : (filterStatus !== 'Both' ? `${filterStatus} Personnel` : (searchTerm ? 'Search Results' : 'Personnel List')))}</h2>
-        </div>
-        <p className="records-section-copy">
-          {showArchived
-            ? 'Review archived employee files separately from active personnel.'
-            : (filterMonth !== 'All'
-              ? `Showing personnel whose birthdays fall in ${birthdayGroups.find((group) => String(group.monthNumber).padStart(2, '0') === filterMonth)?.month || 'the selected month'}.`
-              : (filterStatus !== 'Both' ? `Currently filtered to show only ${filterStatus} records.` : 'Showing all personnel records from the live system.'))}
-        </p>
-      </div>
+      {viewMode === 'personnel-list' && (
+        <>
+          <div ref={tableSectionRef} className="records-section-header">
+            <div>
+              <p className="panel-kicker">{showArchived ? 'Trashbin' : 'Personnel List'}</p>
+              <h2>{showArchived ? 'Trashbin Records' : (filterMonth !== 'All' ? `${new Date(`2000-${filterMonth}-01`).toLocaleString('en-US', { month: 'long' })} Birthdays` : (filterStatus !== 'Both' ? `${filterStatus} Personnel` : (searchTerm ? 'Search Results' : 'Personnel List')))}</h2>
+            </div>
+            <p className="records-section-copy">
+              {showArchived
+                ? 'Review archived employee files separately from active personnel.'
+                : (filterMonth !== 'All'
+                  ? `Showing personnel whose birthdays fall in ${new Date(`2000-${filterMonth}-01`).toLocaleString('en-US', { month: 'long' })}.`
+                  : (filterStatus !== 'Both' ? `Currently filtered to show only ${filterStatus} records.` : 'Showing all personnel records from the live system.'))}
+            </p>
+          </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Employee ID</th>
-              <th>Full Name</th>
-              <th>Gender</th>
-              <th>Last Medical Exam</th>
-              <th>Fitness Level</th>
-              <th>Physical Fitness Status</th>
-              <th>Fitness Category</th>
-              <th>Next Exam</th>
-              <th>Medical Status</th>
-              <th>Findings</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPatients.length > 0 ? (
-              filteredPatients.map(patient => {
-                const fitnessBadge = getFitnessBadge(patient.physicalFitness?.capability);
-                const scheduleReminder = getExamReminder(patient.birthday, patient.lastMedicalDate);
-                return (
-                  <tr key={patient.id}>
-                    <td style={{ color: '#94a3b8' }}>#{patient.id}</td>
-                    <td style={{ fontWeight: 500, color: '#fff' }}>{patient.name}</td>
-                    <td>{patient.gender}</td>
-                    <td>{patient.lastMedicalDate || 'N/A'}</td>
-                    <td>
-                      <span style={{ color: fitnessBadge.color, fontWeight: 700, fontSize: '0.9rem' }}>
-                        {fitnessBadge.label}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ color: '#fbbf24', fontSize: '0.85rem', fontWeight: 600 }}>
-                        {patient.physicalFitnessStatus || patient.physicalFitness?.capability || 'Not Assessed'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ color: '#60a5fa', fontSize: '0.85rem', fontWeight: 600 }}>
-                        {patient.physicalFitness?.capability || 'Not Assessed'}
-                      </span>
-                    </td>
-                    <td>
-                      <div>{patient.nextMedicalDate}</div>
-                      {scheduleReminder.level !== 'info' && (
-                        <div style={{ marginTop: '6px', color: scheduleReminder.level === 'overdue' ? '#f87171' : '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>
-                          {scheduleReminder.level === 'overdue' ? 'Overdue' : 'Upcoming'}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge status-${patient.computedStatus.replace(/\s+/g, '-').toLowerCase()}`}>
-                        {patient.computedStatus}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ color: patient.findings === 'Pending' ? '#facc15' : '#4ade80', fontSize: '0.9rem', fontWeight: 600 }}>
-                        {patient.findings || 'Complete'}
-                      </span>
-                      <div style={{ fontSize: '0.75rem', marginTop: '4px', color: getFitStatus(patient.findings || 'Complete').color, border: `1px solid ${getFitStatus(patient.findings || 'Complete').color}`, display: 'inline-block', padding: '1px 6px', borderRadius: '4px' }}>
-                        {getFitStatus(patient.findings || 'Complete').label}
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn"
-                        onClick={() => {
-                           setSelectedPersonnel(patient);
-                           const profiles = getProfiles(patient);
-                           setActiveProfile(profiles.length > 0 ? profiles[profiles.length - 1] : null);
-                           setEditPhysicalFitnessStatus(patient.physicalFitnessStatus || patient.physicalFitness?.capability || 'Personal Fitness 1: Fully Exercise');
-                           setEditFitnessCategory('Auto');
-                        }}
-                      >
-                        View Record
-                      </button>
-                      {!showArchived && currentUser?.role === 'admin' && (
-                        <button
-                          className="action-btn archive-btn"
-                          style={{ marginLeft: '10px', background: '#f87171', color: '#fff' }}
-                          onClick={() => onArchivePersonnel(patient.id)}
-                          title="Move to Trash"
-                        >
-                          Trash Record
-                        </button>
-                      )}
-                      {showArchived && currentUser?.role === 'admin' && (
-                        <>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Full Name</th>
+                  <th>Gender</th>
+                  <th>Last Medical Exam</th>
+                  <th>Fitness Level</th>
+                  <th>Physical Fitness Status</th>
+                  <th>Fitness Category</th>
+                  <th>Next Exam</th>
+                  <th>Medical Status</th>
+                  <th>Findings</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPatients.length > 0 ? (
+                  filteredPatients.map(patient => {
+                    const fitnessBadge = getFitnessBadge(patient.physicalFitness?.capability);
+                    const scheduleReminder = getExamReminder(patient.birthday, patient.lastMedicalDate);
+                    return (
+                      <tr key={patient.id}>
+                        <td style={{ color: '#94a3b8' }}>#{patient.id}</td>
+                        <td style={{ fontWeight: 500, color: '#fff' }}>{patient.name}</td>
+                        <td>{patient.gender}</td>
+                        <td>{patient.lastMedicalDate || 'N/A'}</td>
+                        <td>
+                          <span style={{ color: fitnessBadge.color, fontWeight: 700, fontSize: '0.9rem' }}>
+                            {fitnessBadge.label}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ color: '#fbbf24', fontSize: '0.85rem', fontWeight: 600 }}>
+                            {patient.physicalFitnessStatus || patient.physicalFitness?.capability || 'Not Assessed'}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ color: '#60a5fa', fontSize: '0.85rem', fontWeight: 600 }}>
+                            {patient.physicalFitness?.capability || 'Not Assessed'}
+                          </span>
+                        </td>
+                        <td>
+                          <div>{patient.nextMedicalDate}</div>
+                          {scheduleReminder.level !== 'info' && (
+                            <div style={{ marginTop: '6px', color: scheduleReminder.level === 'overdue' ? '#f87171' : '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>
+                              {scheduleReminder.level === 'overdue' ? 'Overdue' : 'Upcoming'}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`status-badge status-${patient.computedStatus.replace(/\s+/g, '-').toLowerCase()}`}>
+                            {patient.computedStatus}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ color: patient.findings === 'Pending' ? '#facc15' : '#4ade80', fontSize: '0.9rem', fontWeight: 600 }}>
+                            {patient.findings || 'Complete'}
+                          </span>
+                          <div style={{ fontSize: '0.75rem', marginTop: '4px', color: getFitStatus(patient.findings || 'Complete').color, border: `1px solid ${getFitStatus(patient.findings || 'Complete').color}`, display: 'inline-block', padding: '1px 6px', borderRadius: '4px' }}>
+                            {getFitStatus(patient.findings || 'Complete').label}
+                          </div>
+                        </td>
+                        <td>
                           <button
                             className="action-btn"
-                            style={{ marginLeft: '10px', background: '#4ade80', color: '#000' }}
-                            onClick={() => onUnarchivePersonnel(patient.id)}
-                            title="Restore Record"
+                            onClick={() => {
+                               setSelectedPersonnel(patient);
+                               const profiles = getProfiles(patient);
+                               setActiveProfile(profiles.length > 0 ? profiles[profiles.length - 1] : null);
+                               setEditPhysicalFitnessStatus(patient.physicalFitnessStatus || patient.physicalFitness?.capability || 'Personal Fitness 1: Fully Exercise');
+                               setEditFitnessCategory('Auto');
+                            }}
                           >
-                            Restore
+                            View Record
                           </button>
-                          <button
-                            className="action-btn delete-btn"
-                            style={{ marginLeft: '10px' }}
-                            onClick={() => setPatientToDelete(patient)}
-                            title="Delete Permanently"
-                          >
-                            Delete Forever
-                          </button>
-                        </>
-                      )}
+                          {!showArchived && currentUser?.role === 'admin' && (
+                            <button
+                              className="action-btn archive-btn"
+                              style={{ marginLeft: '10px', background: '#f87171', color: '#fff' }}
+                              onClick={() => onArchivePersonnel(patient.id)}
+                              title="Move to Trash"
+                            >
+                              Trash Record
+                            </button>
+                          )}
+                          {showArchived && currentUser?.role === 'admin' && (
+                            <>
+                              <button
+                                className="action-btn"
+                                style={{ marginLeft: '10px', background: '#4ade80', color: '#000' }}
+                                onClick={() => onUnarchivePersonnel(patient.id)}
+                                title="Restore Record"
+                              >
+                                Restore
+                              </button>
+                              <button
+                                className="action-btn delete-btn"
+                                style={{ marginLeft: '10px' }}
+                                onClick={() => setPatientToDelete(patient)}
+                                title="Delete Permanently"
+                              >
+                                Delete Forever
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="10" style={{ textAlign: 'center', padding: '40px' }}>
+                      {searchTerm ? `No personnel found matching "${searchTerm}"` : 'No personnel found.'}
                     </td>
                   </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: '40px' }}>
-                  {searchTerm ? `No personnel found matching "${searchTerm}"` : 'No personnel found.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
-      {!showArchived && (
+      {!showArchived && viewMode !== 'personnel-list' && (
         <div className="dashboard-overview-grid">
 
           <section className="overview-panel summary-panel">

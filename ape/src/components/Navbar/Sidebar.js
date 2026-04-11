@@ -33,6 +33,20 @@ const Sidebar = ({
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
       )
+    },
+    { 
+      id: 'personnel-list', 
+      label: 'Personnel List', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="nav-svg-icon">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <circle cx="4" cy="6" r="1"></circle>
+          <circle cx="4" cy="12" r="1"></circle>
+          <circle cx="4" cy="18" r="1"></circle>
+        </svg>
+      )
     }
   ];
 
