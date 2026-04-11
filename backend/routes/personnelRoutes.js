@@ -75,14 +75,24 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// IMPORT CSV replacement
+// IMPORT CSV merge/update
 router.post('/import', async (req, res) => {
   try {
-    const records = req.body; 
-    // Delete existing active records to match user's "replaceCollection"
-    await Personnel.deleteMany({ isArchived: false });
-    const toInsert = records.map(r => ({ ...r, isArchived: false }));
-    await Personnel.insertMany(toInsert);
+    const records = Array.isArray(req.body) ? req.body : [];
+
+    for (const record of records) {
+      const payload = {
+        ...record,
+        isArchived: false
+      };
+
+      await Personnel.findOneAndUpdate(
+        { id: payload.id },
+        payload,
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
     const allRecords = await Personnel.find({ isArchived: false }).sort({ createdAt: -1 });
     res.json(allRecords);
   } catch (err) {

@@ -110,6 +110,13 @@ const getFitnessBadge = (capability) => {
   return { label: 'Fitness 1', color: '#4ade80' };
 };
 
+const monthNumberFromBirthday = (birthday) => {
+  if (!birthday || birthday === 'N/A') return null;
+  const parsed = new Date(birthday);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return String(parsed.getMonth() + 1).padStart(2, '0');
+};
+
 const Dashboard = ({
   personnelList,
   archivedPersonnel,
@@ -205,16 +212,9 @@ const Dashboard = ({
     nextMedicalDate: getNextMedicalDate(p.birthday, p.lastMedicalDate)
   })) : personnelWithStatus.filter(patient => {
     const matchesSearch = patient.name.toLowerCase().includes(searchTerm.toLowerCase());
-    let matchesMonth = true;
-    if (filterMonth !== 'All' && patient.birthday && patient.birthday !== 'N/A') {
-      const bDate = new Date(patient.birthday);
-      if (!isNaN(bDate.getTime())) {
-        const mm = String(bDate.getMonth() + 1).padStart(2, '0');
-        matchesMonth = mm === filterMonth;
-      }
-    } else if (filterMonth !== 'All') {
-      matchesMonth = false;
-    }
+    const matchesMonth = filterMonth === 'All'
+      ? true
+      : monthNumberFromBirthday(patient.birthday) === filterMonth;
 
     let matchesYear = true;
     if (filterYear !== 'All') {
@@ -301,6 +301,11 @@ const Dashboard = ({
 
   const handleStatusCardClick = (status) => {
     setFilterStatus((current) => (current === status ? 'Both' : status));
+    jumpToPersonnelList();
+  };
+
+  const handleMonthCardClick = (monthNumber) => {
+    setFilterMonth((current) => (current === monthNumber ? 'All' : monthNumber));
     jumpToPersonnelList();
   };
 
@@ -403,6 +408,51 @@ const Dashboard = ({
               </div>
             </>
           )}
+          {!showArchived && currentUser?.role !== 'admin' && (
+            <>
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="minimal-select"
+              >
+                <option value="All">All Months</option>
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="minimal-select"
+              >
+                <option value="All">All Years</option>
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+
+              <div className="search-wrapper static">
+                <span className="search-icon">Filter</span>
+                <input
+                  type="text"
+                  placeholder="Search personnel..."
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </>
+          )}
           {showArchived && (
             <select
               value={sortArchived}
@@ -465,15 +515,20 @@ const Dashboard = ({
         </div>
       )}
 
-      {false && !showArchived && (
+      {!showArchived && (
         <div className="birthday-overview">
           <div className="birthday-overview-header">
             <h2>Birthday Calendar</h2>
-            <p>All birthdays from January to December, grouped by month.</p>
+            <p>Click a month to filter the table by personnel birthdays.</p>
           </div>
           <div className="birthday-grid">
             {birthdayGroups.map((group) => (
-              <div key={group.month} className="birthday-card">
+              <button
+                key={group.month}
+                type="button"
+                className={`birthday-card ${filterMonth === String(group.monthNumber).padStart(2, '0') ? 'active' : ''}`}
+                onClick={() => handleMonthCardClick(String(group.monthNumber).padStart(2, '0'))}
+              >
                 <div className="birthday-card-header">
                   <h3>{group.month}</h3>
                   <span>{group.count}</span>
@@ -493,7 +548,7 @@ const Dashboard = ({
                 ) : (
                   <div className="birthday-empty">No birthdays recorded.</div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -502,12 +557,14 @@ const Dashboard = ({
       <div ref={tableSectionRef} className="records-section-header">
         <div>
           <p className="panel-kicker">{showArchived ? 'Trashbin' : 'Records Table'}</p>
-          <h2>{showArchived ? 'Trashbin Records' : (filterStatus !== 'Both' ? `${filterStatus} Personnel` : (searchTerm ? 'Search Results' : 'Personnel List'))}</h2>
+          <h2>{showArchived ? 'Trashbin Records' : (filterMonth !== 'All' ? `${birthdayGroups.find((group) => String(group.monthNumber).padStart(2, '0') === filterMonth)?.month || 'Selected'} Birthdays` : (filterStatus !== 'Both' ? `${filterStatus} Personnel` : (searchTerm ? 'Search Results' : 'Personnel List')))}</h2>
         </div>
         <p className="records-section-copy">
           {showArchived
             ? 'Review archived employee files separately from active personnel.'
-            : (filterStatus !== 'Both' ? `Currently filtered to show only ${filterStatus} records.` : 'Showing all personnel records from the live system.')}
+            : (filterMonth !== 'All'
+              ? `Showing personnel whose birthdays fall in ${birthdayGroups.find((group) => String(group.monthNumber).padStart(2, '0') === filterMonth)?.month || 'the selected month'}.`
+              : (filterStatus !== 'Both' ? `Currently filtered to show only ${filterStatus} records.` : 'Showing all personnel records from the live system.'))}
         </p>
       </div>
 

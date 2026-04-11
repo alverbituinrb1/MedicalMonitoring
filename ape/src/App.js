@@ -457,12 +457,10 @@ function App() {
         }
 
         setPersonnelList(updatedList);
-        setArchivedPersonnel([]); // Clearing trashbin to match old replacement logic
         writeCachedRecords(ACTIVE_CACHE_KEY, updatedList);
-        writeCachedRecords(ARCHIVED_CACHE_KEY, []);
         setBackendStatus('online');
         setDataSource('live');
-        alert(`Successfully imported ${importedPersonnel.length} personnel records into MongoDB.`);
+        alert(`Successfully imported or updated ${importedPersonnel.length} personnel records in MongoDB.`);
       } catch (error) {
         setBackendStatus('offline');
         console.error("Import error detail:", error);

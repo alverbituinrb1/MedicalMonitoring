@@ -145,14 +145,10 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         setFormData((prev) => ({ ...prev, scanFileName: file.name, scanFileURL: event.target.result }));
-        
-        // --- SIMULATE AI SCAN ---
         setIsScanning(true);
         setTimeout(() => {
           setIsScanning(false);
-          const aiResult = Math.random() > 0.5 ? 'Complete' : 'Pending';
-          setFormData(prev => ({ ...prev, findings: aiResult }));
-        }, 2500);
+        }, 600);
       };
       reader.readAsDataURL(file);
     }
@@ -163,8 +159,11 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
     if (currentIndex < tabs.length - 1) {
       setActiveTab(tabs[currentIndex + 1].id);
     } else {
+      const generatedId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `personnel-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
       const newPersonnel = {
-        id: Math.floor(1000 + Math.random() * 9000).toString(),
+        id: generatedId,
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         designation: formData.designation || 'N/A',
         unit: formData.unit || 'N/A',

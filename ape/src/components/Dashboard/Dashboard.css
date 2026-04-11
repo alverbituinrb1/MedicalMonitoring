@@ -403,7 +403,8 @@
 }
 
 .birthday-overview {
-  display: none;
+  display: block;
+  margin-bottom: 28px;
 }
 
 .birthday-overview-header {
@@ -437,6 +438,21 @@
   border-radius: 18px;
   padding: 18px;
   min-height: 250px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.birthday-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(96, 165, 250, 0.45);
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.28);
+}
+
+.birthday-card.active {
+  border-color: rgba(96, 165, 250, 0.8);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.22), 0 16px 30px rgba(2, 6, 23, 0.32);
 }
 
 .birthday-card-header {
