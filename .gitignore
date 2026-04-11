@@ -1,0 +1,16 @@
+node_modules/
+build/
+.env
+.DS_Store
+Thumbs.db
+
+ape/node_modules/
+ape/build/
+backend/node_modules/
+backend/.env
+*.sqlite
+*.sqlite-journal
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

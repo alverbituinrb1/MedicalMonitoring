@@ -1,0 +1,253 @@
+.patient-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  width: 100%;
+}
+
+.folder-wrapper {
+  width: 100%;
+  max-width: 1200px;
+  position: relative;
+  perspective: 1000px;
+}
+
+/* Tabs Header representing the Folder Tabs */
+.folder-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: -1px; /* Overlap the border slightly */
+  z-index: 10;
+  position: relative;
+  padding-left: 20px;
+}
+
+.folder-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  padding: 16px 32px;
+  border-radius: 12px 12px 0 0;
+  color: #a0aabf;
+  font-weight: 500;
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.folder-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.folder-tab.active {
+  background: rgba(30, 41, 59, 0.7); /* Deep elegant slate background */
+  color: #60a5fa; /* A nice digital blue */
+  border-color: rgba(96, 165, 250, 0.5); /* blue border accent */
+  border-bottom: 2px solid transparent; 
+  box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* The actual Folder Body (Glassmorphism card) */
+.folder-body {
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 0 16px 16px 16px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+  animation: fadeInDown 0.5s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle glow behind the folder */
+.folder-body::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, rgba(96, 165, 250, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Content animations */
+.tab-content {
+  animation: slideIn 0.3s ease-out;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.form-group label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 24px;
+  border-radius: 12px;
+  color: #f8fafc;
+  font-size: 1.15rem;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.form-input::placeholder {
+  color: #64748b;
+}
+
+/* Gender selector specific */
+.gender-selector {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.gender-option {
+  flex: 1;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s ease;
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.gender-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gender-option.selected {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: #60a5fa;
+  color: #60a5fa;
+}
+
+/* Drag and Drop Zone */
+.upload-zone {
+  border: 2px dashed rgba(96, 165, 250, 0.4);
+  background: rgba(15, 23, 42, 0.4);
+  padding: 60px 30px;
+  border-radius: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.upload-zone:hover, .upload-zone.drag-active {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: #60a5fa;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  color: #60a5fa;
+}
+
+/* Common form navigation buttons */
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 20px;
+}
+
+.btn {
+  padding: 16px 36px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-size: 1.15rem;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+}
+
+/* Animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
