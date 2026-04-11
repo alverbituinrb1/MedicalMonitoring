@@ -10,6 +10,9 @@ import './App.css';
 const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:5000/api/personnel'
   : '/api/personnel';
+const HEALTHCHECK_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:5000/api/health'
+  : '/api/health';
 const ACTIVE_CACHE_KEY = 'ape-active-personnel-cache';
 const ARCHIVED_CACHE_KEY = 'ape-archived-personnel-cache';
 const BUNDLED_ACTIVE_RECORDS = Array.isArray(BIRTHDAY_RECORDS_2026) ? BIRTHDAY_RECORDS_2026 : [];
@@ -310,6 +313,16 @@ const writeCachedRecords = (key, records) => {
   }
 };
 
+const checkBackendHealth = async () => {
+  try {
+    const res = await fetch(HEALTHCHECK_URL);
+    const data = await res.json();
+    return res.ok && data.server === 'online';
+  } catch (error) {
+    return false;
+  }
+};
+
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -324,7 +337,7 @@ function App() {
   const fetchBackendData = async () => {
     try {
       const [activeRes, archiveRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/`),
+        fetch(API_BASE_URL),
         fetch(`${API_BASE_URL}/archived`)
       ]);
       const activeData = await activeRes.json();
@@ -360,7 +373,7 @@ function App() {
       } else {
         setDataSource('empty');
       }
-      setBackendStatus('offline');
+      setBackendStatus(await checkBackendHealth() ? 'online' : 'offline');
       console.error("Failed to fetch from MongoDB backend:", err);
     }
   };
@@ -381,7 +394,7 @@ function App() {
 
   const addPersonnel = async (newPersonnel) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/`, {
+      const res = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPersonnel)
