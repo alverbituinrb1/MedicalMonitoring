@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Navbar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import PatientForm from './components/PatientForm/PatientForm';
@@ -7,6 +7,7 @@ import CalendarView from './components/CalendarView/CalendarView';
 import { BIRTHDAY_RECORDS_2026 } from './data/birthdayRecords';
 import './App.css';
 
+const DEFAULT_ADMIN_PASSWORD = 'admin123';
 const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:5000/api/personnel'
   : '/api/personnel';
@@ -166,7 +167,24 @@ const parsePersonnelCsv = (csvText) => {
   });
 };
 
+const getBirthdayMonthAndDay = (birthday) => {
+  if (!birthday || birthday === 'N/A') return null;
+  const normalized = String(birthday).trim();
+  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return {
+      monthIndex: Number(isoMatch[2]) - 1,
+      day: Number(isoMatch[3])
+    };
+  }
 
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return {
+    monthIndex: parsed.getMonth(),
+    day: parsed.getDate()
+  };
+};
 
 const getBirthdaysByMonth = (records) => {
   const monthNames = [
@@ -186,14 +204,17 @@ const getBirthdaysByMonth = (records) => {
 
   return monthNames.map((month, monthIndex) => {
     const entries = records
-      .filter((person) => person.birthday && person.birthday !== 'N/A')
-      .filter((person) => new Date(person.birthday).getMonth() === monthIndex)
-      .sort((left, right) => new Date(left.birthday).getDate() - new Date(right.birthday).getDate())
+      .map((person) => ({
+        ...person,
+        birthdayParts: getBirthdayMonthAndDay(person.birthday)
+      }))
+      .filter((person) => person.birthdayParts && person.birthdayParts.monthIndex === monthIndex)
+      .sort((left, right) => left.birthdayParts.day - right.birthdayParts.day)
       .map((person) => ({
         id: person.id,
         name: person.name,
         birthday: person.birthday,
-        day: new Date(person.birthday).getDate(),
+        day: person.birthdayParts.day,
         agency: person.agency || 'N/A',
         unit: person.unit || 'N/A'
       }));
@@ -328,17 +349,141 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [personnelList, setPersonnelList] = useState([]);
   const [archivedPersonnel, setArchivedPersonnel] = useState([]);
+  const [deletedPersonnelLog, setDeletedPersonnelLog] = useState([]);
   const [birthdaysByMonth, setBirthdaysByMonth] = useState([]);
   const [medicalSchedule, setMedicalSchedule] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [backendStatus, setBackendStatus] = useState('checking');
   const [dataSource, setDataSource] = useState('live');
+  const [adminPassword, setAdminPassword] = useState(DEFAULT_ADMIN_PASSWORD);
+  const [showBirthdayNotifications, setShowBirthdayNotifications] = useState(false);
+  const [passwordModal, setPasswordModal] = useState({
+    isOpen: false,
+    mode: null,
+    title: '',
+    description: '',
+    nextView: null,
+    currentPassword: '',
+    newPassword: '',
+    error: ''
+  });
 
-  const fetchBackendData = async () => {
+  const closePasswordModal = () => {
+    setPasswordModal({
+      isOpen: false,
+      mode: null,
+      title: '',
+      description: '',
+      nextView: null,
+      currentPassword: '',
+      newPassword: '',
+      error: ''
+    });
+  };
+
+  const handleViewChange = (nextView) => {
+    if (nextView === 'personnel-trashbin' && currentUser?.role === 'admin') {
+      setPasswordModal({
+        isOpen: true,
+        mode: 'unlock-trashbin',
+        title: 'Archive Access',
+        description: 'Enter the admin password to open the Personnel Trashbin.',
+        nextView,
+        currentPassword: '',
+        newPassword: '',
+        error: ''
+      });
+      return;
+    }
+
+    setCurrentView(nextView);
+  };
+
+  const handleChangeAdminPassword = () => {
+    if (currentUser?.role !== 'admin') {
+      return;
+    }
+
+    setPasswordModal({
+      isOpen: true,
+      mode: 'change-password',
+      title: 'Change Admin Password',
+      description: 'Update the admin password for this session only. This change is not saved locally.',
+      nextView: null,
+      currentPassword: '',
+      newPassword: '',
+      error: ''
+    });
+  };
+
+  const submitPasswordModal = () => {
+    if (passwordModal.mode === 'unlock-trashbin') {
+      if (passwordModal.currentPassword !== adminPassword) {
+        setPasswordModal((current) => ({ ...current, error: 'Invalid admin password.' }));
+        return;
+      }
+
+      const nextView = passwordModal.nextView || 'personnel-trashbin';
+      closePasswordModal();
+      setCurrentView(nextView);
+      return;
+    }
+
+    if (passwordModal.mode === 'change-password') {
+      if (passwordModal.currentPassword !== adminPassword) {
+        setPasswordModal((current) => ({ ...current, error: 'Current admin password is incorrect.' }));
+        return;
+      }
+
+      const trimmedPassword = passwordModal.newPassword.trim();
+      if (!trimmedPassword) {
+        setPasswordModal((current) => ({ ...current, error: 'The new admin password cannot be empty.' }));
+        return;
+      }
+
+      setAdminPassword(trimmedPassword);
+      closePasswordModal();
+      alert('Admin password updated for this session.');
+    }
+  };
+
+  const replaceArchivedRecords = (records) => {
+    const nextArchived = Array.isArray(records) ? records : [];
+    setArchivedPersonnel(nextArchived);
+    writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
+  };
+
+  const removeArchivedRecordFromCache = (id) => {
+    setArchivedPersonnel((prev) => {
+      const nextArchived = prev.filter((person) => person.id !== id);
+      writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
+      return nextArchived;
+    });
+  };
+
+  const refreshArchivedFromServer = async () => {
+    const archiveRes = await fetch(`${API_BASE_URL}/archived`);
+    const archiveData = await archiveRes.json();
+
+    if (!archiveRes.ok || archiveData.error) {
+      throw new Error(archiveData.error || 'Failed to refresh Trashbin records');
+    }
+
+    replaceArchivedRecords(archiveData);
+    return archiveData;
+  };
+
+  const fetchBackendData = useCallback(async () => {
     try {
-      const [activeRes, archiveRes] = await Promise.all([
+      const [activeRes, archiveRes, deletedResult] = await Promise.all([
         fetch(API_BASE_URL),
-        fetch(`${API_BASE_URL}/archived`)
+        fetch(`${API_BASE_URL}/archived`),
+        fetch(`${API_BASE_URL}/deleted`)
+          .then(async (response) => {
+            const data = await response.json();
+            return { ok: response.ok, data };
+          })
+          .catch((error) => ({ ok: false, error }))
       ]);
       const activeData = await activeRes.json();
       const archiveData = await archiveRes.json();
@@ -352,8 +497,10 @@ function App() {
         writeCachedRecords(ACTIVE_CACHE_KEY, activeData);
       }
       if (!archiveData.error) {
-        setArchivedPersonnel(archiveData);
-        writeCachedRecords(ARCHIVED_CACHE_KEY, archiveData);
+        replaceArchivedRecords(archiveData);
+      }
+      if (deletedResult.ok && !deletedResult.data?.error) {
+        setDeletedPersonnelLog(Array.isArray(deletedResult.data) ? deletedResult.data : []);
       }
       setBackendStatus('online');
       setDataSource('live');
@@ -376,7 +523,7 @@ function App() {
       setBackendStatus(await checkBackendHealth() ? 'online' : 'offline');
       console.error("Failed to fetch from MongoDB backend:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchBackendData();
@@ -385,12 +532,23 @@ function App() {
     }, 30000);
 
     return () => clearInterval(refreshInterval);
-  }, []);
+  }, [fetchBackendData]);
 
   useEffect(() => {
     setMedicalSchedule(getMedicalSchedule(personnelList));
     setBirthdaysByMonth(getBirthdaysByMonth(personnelList));
   }, [personnelList]);
+
+  const currentMonthNumber = new Date().getMonth() + 1;
+  const currentBirthdayGroup = birthdaysByMonth.find((group) => group.monthNumber === currentMonthNumber) || null;
+  const currentMonthBirthdays = currentBirthdayGroup?.entries || [];
+  const currentMonthLabel = currentBirthdayGroup?.month || new Date().toLocaleString('en-US', { month: 'long' });
+
+  useEffect(() => {
+    if (currentView === 'personnel-list' || currentView === 'personnel-trashbin') {
+      setIsSidebarOpen(false);
+    }
+  }, [currentView]);
 
   const addPersonnel = async (newPersonnel) => {
     try {
@@ -415,13 +573,22 @@ function App() {
   const deletePersonnel = async (id) => {
     try {
       const res = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        throw new Error('Failed to delete personnel');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to move personnel to Trashbin');
       }
       setPersonnelList(prev => {
-        const nextList = prev.filter(p => p.id !== id);
-        writeCachedRecords(ACTIVE_CACHE_KEY, nextList);
-        return nextList;
+        const nextActive = prev.filter(p => p.id !== id);
+        writeCachedRecords(ACTIVE_CACHE_KEY, nextActive);
+        return nextActive;
+      });
+      setArchivedPersonnel(prev => {
+        const alreadyExists = prev.some((person) => person.id === data.record?.id);
+        const nextArchived = alreadyExists
+          ? prev.map((person) => (person.id === data.record.id ? data.record : person))
+          : [data.record, ...prev];
+        writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
+        return nextArchived;
       });
       setBackendStatus('online');
       setDataSource('live');
@@ -512,10 +679,10 @@ function App() {
           writeCachedRecords(ACTIVE_CACHE_KEY, nextActive);
           return nextActive;
         });
-        setArchivedPersonnel(prev => {
-          const nextArchived = [data.record, ...prev];
-          writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
-          return nextArchived;
+      setArchivedPersonnel(prev => {
+        const nextArchived = [data.record, ...prev];
+        writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
+        return nextArchived;
         });
         setBackendStatus('online');
         setDataSource('live');
@@ -530,22 +697,31 @@ function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/${id}/unarchive`, { method: 'PUT' });
       const data = await res.json();
-      if (data.success) {
-        setArchivedPersonnel(prev => {
-          const nextArchived = prev.filter(p => p.id !== id);
-          writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
-          return nextArchived;
-        });
-        setPersonnelList(prev => {
-          const nextActive = [data.record, ...prev];
-          writeCachedRecords(ACTIVE_CACHE_KEY, nextActive);
-          return nextActive;
-        });
-        setBackendStatus('online');
-        setDataSource('live');
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to restore personnel');
       }
+      removeArchivedRecordFromCache(id);
+      setPersonnelList(prev => {
+        const nextActive = [data.record, ...prev];
+        writeCachedRecords(ACTIVE_CACHE_KEY, nextActive);
+        return nextActive;
+      });
+      setBackendStatus('online');
+      setDataSource('live');
     } catch (error) {
+      if (error.message === 'Personnel record not found') {
+        try {
+          await refreshArchivedFromServer();
+          setBackendStatus('online');
+          setDataSource('live');
+          alert('This Trashbin item was no longer in the live database, so the list was refreshed to remove the stale cached record.');
+          return;
+        } catch (refreshError) {
+          console.error('Failed to refresh Trashbin after restore miss', refreshError);
+        }
+      }
       setBackendStatus('offline');
+      alert(error.message || 'Failed to restore personnel.');
       console.error('Failed to restore personnel', error);
     }
   };
@@ -553,34 +729,54 @@ function App() {
   const deleteArchived = async (id) => {
     try {
       const res = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        throw new Error('Failed to permanently delete personnel');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete personnel from Trashbin');
       }
       setArchivedPersonnel(prev => {
         const nextArchived = prev.filter(p => p.id !== id);
         writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
         return nextArchived;
       });
+      const deletedRes = await fetch(`${API_BASE_URL}/deleted`);
+      const deletedResult = await deletedRes.json();
+      if (deletedRes.ok && !deletedResult.error) {
+        setDeletedPersonnelLog(Array.isArray(deletedResult) ? deletedResult : []);
+      }
       setBackendStatus('online');
       setDataSource('live');
+      alert('Record removed from Trashbin and stored in Deleted Archive.');
     } catch (error) {
+      if (error.message === 'Personnel record not found') {
+        try {
+          await refreshArchivedFromServer();
+          setBackendStatus('online');
+          setDataSource('live');
+          alert('This Trashbin item was no longer in the live database, so the list was refreshed to remove the stale cached record.');
+          return;
+        } catch (refreshError) {
+          console.error('Failed to refresh Trashbin after delete miss', refreshError);
+        }
+      }
       setBackendStatus('offline');
-      console.error('Failed to permanently delete personnel', error);
+      alert(error.message || 'Failed to delete personnel from Trashbin.');
+      console.error('Failed to delete personnel from Trashbin', error);
     }
   };
 
   if (!currentUser) {
-    return <Login onLogin={setCurrentUser} />;
+    return <Login onLogin={setCurrentUser} adminPassword={adminPassword} />;
   }
 
   return (
     <div className="App">
       <Sidebar 
         currentView={currentView} 
-        setCurrentView={setCurrentView}
+        setCurrentView={handleViewChange}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         currentUser={currentUser}
+        onChangeAdminPassword={handleChangeAdminPassword}
         onLogout={() => {
           setCurrentUser(null);
           setCurrentView('dashboard');
@@ -588,10 +784,66 @@ function App() {
       />
       
       <div className={`main-content ${isSidebarOpen ? '' : 'expanded'}`}>
+        <div className="birthday-notification-shell">
+          <button
+            type="button"
+            className={`birthday-bell-btn ${showBirthdayNotifications ? 'open' : ''}`}
+            onClick={() => setShowBirthdayNotifications((current) => !current)}
+            title={`${currentMonthBirthdays.length} birthday notification${currentMonthBirthdays.length === 1 ? '' : 's'} for ${currentMonthLabel}`}
+          >
+            <span className="birthday-bell-icon">🎂</span>
+            {currentMonthBirthdays.length > 0 && <span className="birthday-bell-count">{currentMonthBirthdays.length}</span>}
+          </button>
+
+          {showBirthdayNotifications && (
+            <div className="birthday-popover">
+              <div className="birthday-popover-header">
+                <div>
+                  <p className="birthday-popover-kicker">Monthly Birthday Notice</p>
+                  <h3>{currentMonthLabel} Celebrators</h3>
+                </div>
+                <span className="birthday-popover-badge">{currentMonthBirthdays.length}</span>
+              </div>
+
+              {currentMonthBirthdays.length > 0 ? (
+                <div className="birthday-popover-list">
+                  {currentMonthBirthdays
+                    .slice()
+                    .sort((left, right) => {
+                      if (left.day !== right.day) return left.day - right.day;
+                      return left.name.localeCompare(right.name);
+                    })
+                    .map((entry) => (
+                      <div key={entry.id} className="birthday-popover-item">
+                        <div className="birthday-popover-day">{String(entry.day).padStart(2, '0')}</div>
+                        <div className="birthday-popover-meta">
+                          <strong>{entry.name}</strong>
+                          <span>{entry.agency} / {entry.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="birthday-popover-empty">No birthdays recorded for {currentMonthLabel}.</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {(currentView === 'personnel-list' || currentView === 'personnel-trashbin') && (
+          <button
+            type="button"
+            className="sidebar-visibility-btn"
+            onClick={() => setIsSidebarOpen((prev) => !prev)}
+          >
+            {isSidebarOpen ? 'Hide Menu' : 'Show Menu'}
+          </button>
+        )}
         {currentView === 'dashboard' ? (
           <Dashboard 
             personnelList={personnelList} 
             archivedPersonnel={archivedPersonnel}
+            deletedPersonnelLog={deletedPersonnelLog}
             medicalSchedule={medicalSchedule}
             onDeletePersonnel={deletePersonnel} 
             onArchivePersonnel={archivePersonnel}
@@ -605,10 +857,11 @@ function App() {
             dataSource={dataSource}
             viewMode="dashboard"
           />
-        ) : currentView === 'personnel-list' ? (
+        ) : currentView === 'personnel-list' || currentView === 'personnel-trashbin' ? (
           <Dashboard 
             personnelList={personnelList} 
             archivedPersonnel={archivedPersonnel}
+            deletedPersonnelLog={deletedPersonnelLog}
             medicalSchedule={medicalSchedule}
             onDeletePersonnel={deletePersonnel} 
             onArchivePersonnel={archivePersonnel}
@@ -621,6 +874,7 @@ function App() {
             backendStatus={backendStatus}
             dataSource={dataSource}
             viewMode="personnel-list"
+            initialShowArchived={currentView === 'personnel-trashbin'}
           />
         ) : currentView === 'calendar' ? (
           <CalendarView
@@ -631,6 +885,56 @@ function App() {
           <PatientForm onAddPersonnel={addPersonnel} navigateBack={() => setCurrentView('dashboard')} />
         )}
       </div>
+
+      {passwordModal.isOpen && (
+        <div className="app-modal-overlay" onClick={closePasswordModal}>
+          <div className="app-modal-card password-modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="password-modal-header">
+              <span className="password-modal-kicker">Security Check</span>
+              <h2>{passwordModal.title}</h2>
+              <p>{passwordModal.description}</p>
+            </div>
+
+            <div className="password-modal-body">
+              <label className="password-modal-label">
+                {passwordModal.mode === 'change-password' ? 'Current Password' : 'Admin Password'}
+              </label>
+              <input
+                type="password"
+                className="password-modal-input"
+                value={passwordModal.currentPassword}
+                onChange={(event) => setPasswordModal((current) => ({ ...current, currentPassword: event.target.value, error: '' }))}
+                placeholder="Enter password"
+                autoFocus
+              />
+
+              {passwordModal.mode === 'change-password' && (
+                <>
+                  <label className="password-modal-label">New Password</label>
+                  <input
+                    type="password"
+                    className="password-modal-input"
+                    value={passwordModal.newPassword}
+                    onChange={(event) => setPasswordModal((current) => ({ ...current, newPassword: event.target.value, error: '' }))}
+                    placeholder="Enter new password"
+                  />
+                </>
+              )}
+
+              {passwordModal.error && <p className="password-modal-error">{passwordModal.error}</p>}
+            </div>
+
+            <div className="password-modal-actions">
+              <button type="button" className="password-modal-btn secondary" onClick={closePasswordModal}>
+                Cancel
+              </button>
+              <button type="button" className="password-modal-btn primary" onClick={submitPasswordModal}>
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

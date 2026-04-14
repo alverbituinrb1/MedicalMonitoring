@@ -651,13 +651,13 @@ const Dashboard = ({
             <section className="overview-panel deleted-log-panel">
               <div className="panel-header">
                 <div>
-                  <p className="panel-kicker">Deleted History</p>
-                  <h2>Trashbin History</h2>
+                  <p className="panel-kicker">Deleted Archive</p>
+                  <h2>Archived Deleted Records</h2>
                 </div>
                 <span className="panel-badge">{deletedLogEntries.length} logged</span>
               </div>
               <p className="panel-description">
-                This section keeps a review trail of personnel stored in Trashbin so previous medical records can still be reviewed.
+                Records deleted from Trashbin are stored here for review so old personnel files do not disappear completely.
               </p>
               <div className="deleted-log-list">
                 {deletedLogEntries.length > 0 ? (
@@ -687,14 +687,14 @@ const Dashboard = ({
                               setActiveProfile(profiles.length > 0 ? profiles[profiles.length - 1] : null);
                             }}
                           >
-                            {isMedicalUpdateSnapshot ? 'View Previous Record' : 'View Deleted Record'}
+                            {isMedicalUpdateSnapshot ? 'View Previous Record' : 'View Archived Record'}
                           </button>
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="calendar-empty">No permanently deleted personnel recorded yet.</div>
+                  <div className="calendar-empty">No deleted archive records stored yet.</div>
                 )}
               </div>
             </section>
@@ -815,14 +815,14 @@ const Dashboard = ({
                                 className="action-btn delete-btn"
                                 style={{ marginLeft: '10px' }}
                                 onClick={() => {
-                                  const confirmed = window.confirm(`Permanently delete ${patient.name || 'this record'} from Trashbin? This cannot be undone.`);
+                                  const confirmed = window.confirm(`Delete ${patient.name || 'this record'} from Trashbin and store it in Deleted Archive for review?`);
                                   if (confirmed) {
                                     onDeleteArchived(patient.id);
                                   }
                                 }}
-                                title="Permanently Delete Record"
+                                title="Delete Record"
                               >
-                                Delete
+                                Delete Record
                               </button>
                             </>
                           )}
