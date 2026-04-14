@@ -357,6 +357,7 @@ function App() {
   const [dataSource, setDataSource] = useState('live');
   const [adminPassword, setAdminPassword] = useState(DEFAULT_ADMIN_PASSWORD);
   const [showBirthdayNotifications, setShowBirthdayNotifications] = useState(false);
+  const [showBirthdayWidget, setShowBirthdayWidget] = useState(true);
   const [passwordModal, setPasswordModal] = useState({
     isOpen: false,
     mode: null,
@@ -785,7 +786,22 @@ function App() {
       
       <div className={`main-content ${isSidebarOpen ? '' : 'expanded'}`}>
         <div className="birthday-notification-shell">
-          <button
+          {showBirthdayWidget ? (
+            <>
+              <div className="birthday-widget-actions">
+                <button
+                  type="button"
+                  className="birthday-widget-hide-btn"
+                  onClick={() => {
+                    setShowBirthdayNotifications(false);
+                    setShowBirthdayWidget(false);
+                  }}
+                  title="Hide birthday widget"
+                >
+                  Hide
+                </button>
+              </div>
+              <button
             type="button"
             className={`birthday-bell-btn ${showBirthdayNotifications ? 'open' : ''}`}
             onClick={() => setShowBirthdayNotifications((current) => !current)}
@@ -795,7 +811,7 @@ function App() {
             {currentMonthBirthdays.length > 0 && <span className="birthday-bell-count">{currentMonthBirthdays.length}</span>}
           </button>
 
-          {showBirthdayNotifications && (
+              {showBirthdayNotifications && (
             <div className="birthday-popover">
               <div className="birthday-popover-header">
                 <div>
@@ -827,6 +843,17 @@ function App() {
                 <div className="birthday-popover-empty">No birthdays recorded for {currentMonthLabel}.</div>
               )}
             </div>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              className="birthday-widget-show-btn"
+              onClick={() => setShowBirthdayWidget(true)}
+              title="Show birthday widget"
+            >
+              Show birthdays
+            </button>
           )}
         </div>
 
