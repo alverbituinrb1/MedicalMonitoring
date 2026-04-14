@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import './CalendarView.css';
 
-const ITEMS_PER_PAGE = 6;
+const DEFAULT_ITEMS_PER_PAGE = 6;
+const PAGE_SIZE_OPTIONS = [6, 10, 15];
 
 const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   const [activeTab, setActiveTab] = useState('medical');
   const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState('All');
+  const [medicalQuery, setMedicalQuery] = useState('');
+  const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [medicalPages, setMedicalPages] = useState({
     overdue: 1,
     dueSoon: 1,
@@ -18,10 +21,24 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
     return left.name.localeCompare(right.name);
   });
 
+  const normalizedQuery = medicalQuery.trim().toLowerCase();
+  const filteredMedicalSchedule = useMemo(() => {
+    if (!normalizedQuery) return normalizedMedicalSchedule;
+
+    return normalizedMedicalSchedule.filter((item) => {
+      const searchableText = [item.name, item.agency, item.unit, item.nextMedicalDate]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [normalizedMedicalSchedule, normalizedQuery]);
+
   const scheduleGroups = {
-    overdue: normalizedMedicalSchedule.filter((item) => item.status === 'Overdue'),
-    dueSoon: normalizedMedicalSchedule.filter((item) => item.status === 'Due Soon'),
-    upcoming: normalizedMedicalSchedule.filter((item) => item.status === 'Healthy')
+    overdue: filteredMedicalSchedule.filter((item) => item.status === 'Overdue'),
+    dueSoon: filteredMedicalSchedule.filter((item) => item.status === 'Due Soon'),
+    upcoming: filteredMedicalSchedule.filter((item) => item.status === 'Healthy')
   };
 
   const totalBirthdays = birthdaysByMonth.reduce((total, month) => total + month.count, 0);
@@ -51,6 +68,16 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
     }));
   };
 
+  const handleMedicalQueryChange = (event) => {
+    setMedicalQuery(event.target.value);
+    setMedicalPages({ overdue: 1, dueSoon: 1, upcoming: 1 });
+  };
+
+  const handleItemsPerPageChange = (event) => {
+    setItemsPerPage(Number(event.target.value));
+    setMedicalPages({ overdue: 1, dueSoon: 1, upcoming: 1 });
+  };
+
   const renderMedicalRow = (item, variant, label, timingText) => (
     <div key={item.id} className={`calendar-schedule-item ${variant}`}>
       <div className="schedule-item-primary">
@@ -77,10 +104,10 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   );
 
   const renderMedicalSection = (key, title, subtitle, dotClass, badgeClass, items, emptyText, variant, labelBuilder, timingBuilder) => {
-    const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+    const totalPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
     const currentPage = Math.min(medicalPages[key] || 1, totalPages);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pagedItems = items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const pagedItems = items.slice(startIndex, startIndex + itemsPerPage);
 
     return (
       <section className={`calendar-schedule-section ${variant}`}>
@@ -101,10 +128,10 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
             : <div className="calendar-empty">{emptyText}</div>}
         </div>
 
-        {items.length > ITEMS_PER_PAGE && (
+        {items.length > itemsPerPage && (
           <div className="medical-pagination">
             <div className="medical-pagination-summary">
-              Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, items.length)} of {items.length}
+              Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, items.length)} of {items.length}
             </div>
             <div className="medical-pagination-controls">
               <button
@@ -210,6 +237,38 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               </div>
             </div>
 
+            <div className="medical-toolbar">
+              <label className="medical-search-field">
+                <span className="medical-toolbar-label">Search Personnel</span>
+                <input
+                  type="search"
+                  className="medical-search-input"
+                  placeholder="Search by name, agency, unit, or exam date"
+                  value={medicalQuery}
+                  onChange={handleMedicalQueryChange}
+                />
+              </label>
+
+              <label className="medical-page-size-field">
+                <span className="medical-toolbar-label">Rows Per Page</span>
+                <select
+                  className="medical-page-size-select"
+                  value={itemsPerPage}
+                  onChange={handleItemsPerPageChange}
+                >
+                  {PAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {normalizedQuery && (
+              <div className="medical-filter-summary">
+                Found {filteredMedicalSchedule.length} matching personnel for "{medicalQuery}".
+              </div>
+            )}
+
             <div className="calendar-schedule-sections">
               {renderMedicalSection(
                 'overdue',
@@ -218,7 +277,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
                 'overdue',
                 'danger',
                 scheduleGroups.overdue,
-                'No overdue schedules.',
+                'No overdue schedules found.',
                 'danger',
                 () => 'Immediate action',
                 (item) => `${Math.abs(item.daysUntil)} days late`
@@ -231,7 +290,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
                 'due-soon',
                 'warning',
                 scheduleGroups.dueSoon,
-                'No due-soon schedules.',
+                'No due-soon schedules found.',
                 'warning',
                 () => 'Schedule soon',
                 (item) => `${item.daysUntil} days left`
@@ -244,7 +303,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
                 'upcoming',
                 'safe',
                 scheduleGroups.upcoming,
-                'No upcoming schedules.',
+                'No upcoming schedules found.',
                 'neutral',
                 () => 'On track',
                 (item) => `${item.daysUntil} days ahead`
