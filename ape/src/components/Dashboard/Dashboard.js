@@ -814,12 +814,7 @@ const Dashboard = ({
                               <button
                                 className="action-btn delete-btn"
                                 style={{ marginLeft: '10px' }}
-                                onClick={() => {
-                                  const confirmed = window.confirm(`Delete ${patient.name || 'this record'} from Trashbin and store it in Deleted Archive for review?`);
-                                  if (confirmed) {
-                                    onDeleteArchived(patient.id);
-                                  }
-                                }}
+                                onClick={() => setPatientToDelete(patient)}
                                 title="Delete Record"
                               >
                                 Delete Record
@@ -1166,18 +1161,18 @@ const Dashboard = ({
         </div>
       )}
       {/* Delete Confirmation Modal */}
-      {false && patientToDelete && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+      {patientToDelete && (
+        <div className="modal-overlay" onClick={() => setPatientToDelete(null)}>
+          <div className="modal-content delete-confirmation-modal" onClick={(event) => event.stopPropagation()}>
             <div style={{ fontSize: '3.5rem', marginBottom: '15px' }}>⚠️</div>
-            <h2 style={{fontSize: '1.8rem', color:'#fff'}}>Confirm Deletion</h2>
-            <p style={{ margin: '15px 0', color: '#e2e8f0', fontSize: '1.05rem', lineHeight: '1.5' }}>
-              Are you sure you want to delete <strong>{patientToDelete.name}</strong>?
+            <h2 style={{ fontSize: '1.8rem', color: '#fff' }}>Confirm Record Deletion</h2>
+            <p className="delete-confirmation-copy">
+              <strong>{patientToDelete.name || 'This record'}</strong> will be removed from Trashbin and stored in the Deleted Archive for review.
             </p>
-            <p style={{ color: '#ef4444', fontSize: '0.95rem', marginBottom: '25px', fontWeight: 600 }}>
-              This action cannot be undone.
+            <p className="delete-confirmation-note">
+              The record will no longer appear in the Trashbin list, but its archived snapshot will remain available in the Deleted Archive section.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+            <div className="delete-confirmation-actions">
               <button 
                 className="btn-secondary" 
                 onClick={() => setPatientToDelete(null)}
@@ -1185,8 +1180,7 @@ const Dashboard = ({
                 Cancel
               </button>
               <button 
-                className="btn-primary" 
-                style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)' }}
+                className="btn-primary delete-confirmation-btn"
                 onClick={() => {
                   if (showArchived) {
                     onDeleteArchived(patientToDelete.id);
