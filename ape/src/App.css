@@ -15,7 +15,6 @@
 }
 
 .birthday-notification-shell {
-  display: none;
   position: sticky;
   top: 18px;
   z-index: 40;
