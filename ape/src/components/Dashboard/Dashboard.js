@@ -112,7 +112,36 @@ const getFitnessBadge = (capability) => {
 
 const monthNumberFromBirthday = (birthday) => {
   if (!birthday || birthday === 'N/A') return null;
-  const parsed = new Date(birthday);
+  const normalized = String(birthday).trim();
+
+  // Birthday values are stored as YYYY-MM-DD. Read the month directly so
+  // timezone conversion cannot shift records into the previous month.
+  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return isoMatch[2];
+  }
+
+  const parsed = parseDateKey(normalized) || new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return String(parsed.getMonth() + 1).padStart(2, '0');
+};
+
+const birthdayDayFromBirthday = (birthday) => {
+  if (!birthday || birthday === 'N/A') return null;
+  const normalized = String(birthday).trim();
+  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return Number(isoMatch[3]);
+  }
+
+  const parsed = parseDateKey(normalized) || new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getDate();
+};
+
+const monthNumberFromDateValue = (dateValue) => {
+  if (!dateValue || dateValue === 'N/A') return null;
+  const parsed = parseDateKey(String(dateValue).trim()) || new Date(String(dateValue).trim());
   if (Number.isNaN(parsed.getTime())) return null;
   return String(parsed.getMonth() + 1).padStart(2, '0');
 };
@@ -120,6 +149,7 @@ const monthNumberFromBirthday = (birthday) => {
 const Dashboard = ({
   personnelList,
   archivedPersonnel,
+  deletedPersonnelLog,
   medicalSchedule,
   onDeletePersonnel,
   onArchivePersonnel,
@@ -131,13 +161,15 @@ const Dashboard = ({
   currentUser,
   backendStatus,
   dataSource,
-  viewMode = 'dashboard'
+  viewMode = 'dashboard',
+  initialShowArchived = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonth, setFilterMonth] = useState('All');
   const [filterYear, setFilterYear] = useState('All');
   const [filterStatus, setFilterStatus] = useState('Both');
   const [selectedPersonnel, setSelectedPersonnel] = useState(null);
+  const [selectedDeletedEntry, setSelectedDeletedEntry] = useState(null);
   const [activeProfile, setActiveProfile] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editDate, setEditDate] = useState('');
@@ -147,11 +179,14 @@ const Dashboard = ({
   const [editPhysicalFitnessStatus, setEditPhysicalFitnessStatus] = useState('Personal Fitness 1: Fully Exercise');
   const [editMedicalExamLocation, setEditMedicalExamLocation] = useState('');
   const [editFile, setEditFile] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(initialShowArchived);
   const [sortArchived, setSortArchived] = useState('newest');
   const [showSummary, setShowSummary] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const tableSectionRef = useRef(null);
   const nextMedicalSchedules = medicalSchedule || [];
+  const deletedLogEntries = Array.isArray(deletedPersonnelLog) ? deletedPersonnelLog : [];
+  const ITEMS_PER_PAGE = 15;
 
   const getProfiles = (personnel) => {
     if (!personnel) return [];
@@ -167,6 +202,9 @@ const Dashboard = ({
     };
     return [...past, current];
   };
+  const deletedEntryProfiles = selectedDeletedEntry
+    ? getProfiles(selectedDeletedEntry.payload || {}).filter((profile) => profile && (profile.date || profile.findings || profile.scanFileURL || profile.medicalExamLocation || profile.physicalFitness))
+    : [];
 
   // Compute displayed list
   const displayedList = showArchived ? archivedPersonnel : personnelList;
@@ -205,6 +243,8 @@ const Dashboard = ({
     ])
   ).sort((a, b) => b - a);
 
+  const isScheduleMonthMode = viewMode !== 'personnel-list' && filterStatus !== 'Both';
+
   const filteredPatients = showArchived ? sortedArchived.map(p => ({
     ...p,
     computedStatus: getMedicalStatus(p.birthday, p.lastMedicalDate),
@@ -213,7 +253,9 @@ const Dashboard = ({
     const matchesSearch = patient.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesMonth = filterMonth === 'All'
       ? true
-      : monthNumberFromBirthday(patient.birthday) === filterMonth;
+      : (isScheduleMonthMode
+        ? monthNumberFromDateValue(patient.nextMedicalDate) === filterMonth
+        : monthNumberFromBirthday(patient.birthday) === filterMonth);
 
     let matchesYear = true;
     if (filterYear !== 'All') {
@@ -235,11 +277,20 @@ const Dashboard = ({
     }
 
     return matchesSearch && matchesMonth && matchesYear && matchesStatus;
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  }).sort((a, b) => {
+    if (filterMonth !== 'All') {
+      const leftDay = birthdayDayFromBirthday(a.birthday) ?? 99;
+      const rightDay = birthdayDayFromBirthday(b.birthday) ?? 99;
+      if (leftDay !== rightDay) return leftDay - rightDay;
+    }
+    return a.name.localeCompare(b.name);
+  });
 
   const healthyCount = personnelWithStatus.filter(p => p.computedStatus === 'Healthy').length;
   const dueSoonCount = personnelWithStatus.filter(p => p.computedStatus === 'Due Soon').length;
   const overdueCount = personnelWithStatus.filter(p => p.computedStatus === 'Overdue').length;
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / ITEMS_PER_PAGE));
+  const paginatedPatients = filteredPatients.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   const dueSoonSchedules = nextMedicalSchedules.filter((item) => item.status === 'Due Soon');
   const overdueSchedules = nextMedicalSchedules.filter((item) => item.status === 'Overdue');
   const upcomingSchedules = nextMedicalSchedules.filter((item) => item.status === 'Healthy').slice(0, 6);
@@ -247,7 +298,15 @@ const Dashboard = ({
     ? []
     : personnelWithStatus
       .filter((person) => person.computedStatus === filterStatus)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter((person) => filterMonth === 'All' || monthNumberFromDateValue(person.nextMedicalDate) === filterMonth)
+      .sort((a, b) => {
+        if (filterMonth !== 'All') {
+          const leftDay = parseDateKey(a.nextMedicalDate)?.getDate() ?? 99;
+          const rightDay = parseDateKey(b.nextMedicalDate)?.getDate() ?? 99;
+          if (leftDay !== rightDay) return leftDay - rightDay;
+        }
+        return a.name.localeCompare(b.name);
+      });
 
   const handleUpdateRecord = () => {
     if (!editDate) {
@@ -309,8 +368,27 @@ const Dashboard = ({
     }
   }, [viewMode]);
 
+  React.useEffect(() => {
+    setShowArchived(initialShowArchived);
+  }, [initialShowArchived]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterMonth, filterYear, filterStatus, showArchived, viewMode]);
+
+  React.useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const handleStatusCardClick = (status) => {
     setFilterStatus((current) => (current === status ? 'Both' : status));
+    jumpToPersonnelList();
+  };
+
+  const handleMonthFilterChange = (value) => {
+    setFilterMonth(value);
     jumpToPersonnelList();
   };
 
@@ -328,16 +406,10 @@ const Dashboard = ({
           </div>
         </div>
         <div className="filters-container">
-          <button 
-            className="minimal-select"
-            onClick={() => setShowArchived(!showArchived)}
-            style={{ background: showArchived ? '#4ade80' : '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer' }}
-          >
-            {showArchived ? 'View Current Records' : 'View Trashbin (Archive)'}
-          </button>
-
           {!showArchived && currentUser?.role === 'admin' && (
             <>
+              {false && (
+                <>
               <label 
                 className="minimal-select" 
                 style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#fff', border: '1px outset rgba(255, 255, 255, 0.2)', cursor: 'pointer', display: 'inline-block' }}
@@ -366,9 +438,12 @@ const Dashboard = ({
                 📤 Export CSV
               </button>
 
+                </>
+              )}
+
               <select
                 value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
+                onChange={(e) => handleMonthFilterChange(e.target.value)}
                 className="minimal-select"
               >
                 <option value="All">All Months</option>
@@ -415,7 +490,7 @@ const Dashboard = ({
             <>
               <select
                 value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
+                onChange={(e) => handleMonthFilterChange(e.target.value)}
                 className="minimal-select"
               >
                 <option value="All">All Months</option>
@@ -523,18 +598,20 @@ const Dashboard = ({
           <div className="panel-header">
             <div>
               <p className="panel-kicker">Focused List</p>
-              <h2>{filterStatus} Personnel</h2>
+              <h2>{filterMonth !== 'All' ? `${filterStatus} ${new Date(`2000-${filterMonth}-01`).toLocaleString('en-US', { month: 'long' })} Schedule` : `${filterStatus} Personnel`}</h2>
             </div>
             <span className={`panel-badge ${filterStatus === 'Overdue' ? 'status-badge-pill danger' : filterStatus === 'Due Soon' ? 'status-badge-pill warning' : 'status-badge-pill safe'}`}>
               {statusFocusedPersonnel.length} records
             </span>
           </div>
           <p className="panel-description">
-            {filterStatus === 'Overdue'
-              ? 'Personnel whose medical exam target date has already passed.'
-              : filterStatus === 'Due Soon'
-                ? 'Personnel who need attention within the next 30 days.'
-                : 'Personnel currently marked healthy and on schedule.'}
+            {filterMonth !== 'All'
+              ? `Showing ${filterStatus} personnel whose next medical date falls in ${new Date(`2000-${filterMonth}-01`).toLocaleString('en-US', { month: 'long' })}.`
+              : filterStatus === 'Overdue'
+                ? 'Personnel whose medical exam target date has already passed.'
+                : filterStatus === 'Due Soon'
+                  ? 'Personnel who need attention within the next 30 days.'
+                  : 'Personnel currently marked healthy and on schedule.'}
           </p>
           <div className="focused-status-list">
             {statusFocusedPersonnel.length > 0 ? (
@@ -570,6 +647,59 @@ const Dashboard = ({
 
       {viewMode === 'personnel-list' && (
         <>
+          {showArchived && (
+            <section className="overview-panel deleted-log-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-kicker">Deleted History</p>
+                  <h2>Trashbin History</h2>
+                </div>
+                <span className="panel-badge">{deletedLogEntries.length} logged</span>
+              </div>
+              <p className="panel-description">
+                This section keeps a review trail of personnel stored in Trashbin so previous medical records can still be reviewed.
+              </p>
+              <div className="deleted-log-list">
+                {deletedLogEntries.length > 0 ? (
+                  deletedLogEntries.map((entry) => {
+                    const payload = entry.payload || {};
+                    const deletedAt = entry.deletedAt ? new Date(entry.deletedAt) : null;
+                    const isMedicalUpdateSnapshot = entry.reason === 'medical-update';
+                    return (
+                      <div key={entry._id || `${entry.originalId}-${entry.deletedAt}`} className="deleted-log-item">
+                        <div className="deleted-log-main">
+                          <strong>{payload.name || 'Unknown Personnel'}</strong>
+                          <span>
+                            #{entry.originalId} / {payload.agency || 'N/A'} / {payload.unit || 'N/A'}
+                            {isMedicalUpdateSnapshot ? ' / Previous medical version' : ''}
+                          </span>
+                        </div>
+                        <div className="deleted-log-side">
+                          <span>{deletedAt ? deletedAt.toLocaleString() : 'Unknown time'}</span>
+                          <small>{payload.lastMedicalDate || 'No medical date recorded'}</small>
+                          <button
+                            type="button"
+                            className="action-btn deleted-log-view-btn"
+                            onClick={() => {
+                              const payload = entry.payload || {};
+                              const profiles = getProfiles(payload);
+                              setSelectedDeletedEntry(entry);
+                              setActiveProfile(profiles.length > 0 ? profiles[profiles.length - 1] : null);
+                            }}
+                          >
+                            {isMedicalUpdateSnapshot ? 'View Previous Record' : 'View Deleted Record'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="calendar-empty">No permanently deleted personnel recorded yet.</div>
+                )}
+              </div>
+            </section>
+          )}
+
           <div ref={tableSectionRef} className="records-section-header">
             <div>
               <p className="panel-kicker">{showArchived ? 'Trashbin' : 'Personnel List'}</p>
@@ -602,8 +732,8 @@ const Dashboard = ({
                 </tr>
               </thead>
               <tbody>
-                {filteredPatients.length > 0 ? (
-                  filteredPatients.map(patient => {
+                {paginatedPatients.length > 0 ? (
+                  paginatedPatients.map(patient => {
                     const fitnessBadge = getFitnessBadge(patient.physicalFitness?.capability);
                     const scheduleReminder = getExamReminder(patient.birthday, patient.lastMedicalDate);
                     return (
@@ -684,10 +814,15 @@ const Dashboard = ({
                               <button
                                 className="action-btn delete-btn"
                                 style={{ marginLeft: '10px' }}
-                                onClick={() => setPatientToDelete(patient)}
-                                title="Delete Permanently"
+                                onClick={() => {
+                                  const confirmed = window.confirm(`Permanently delete ${patient.name || 'this record'} from Trashbin? This cannot be undone.`);
+                                  if (confirmed) {
+                                    onDeleteArchived(patient.id);
+                                  }
+                                }}
+                                title="Permanently Delete Record"
                               >
-                                Delete Forever
+                                Delete
                               </button>
                             </>
                           )}
@@ -705,6 +840,45 @@ const Dashboard = ({
               </tbody>
             </table>
           </div>
+          {filteredPatients.length > 0 && (
+            <div className="pagination-bar">
+              <span className="pagination-summary">
+                Page {currentPage} of {totalPages} / {filteredPatients.length} records
+              </span>
+              <div className="pagination-actions">
+                <button
+                  type="button"
+                  className="minimal-select pagination-btn"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="pagination-pages">
+                  {Array.from({ length: totalPages }, (_, index) => index + 1)
+                    .slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))
+                    .map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        className={`minimal-select pagination-btn ${page === currentPage ? 'active-page' : ''}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                </span>
+                <button
+                  type="button"
+                  className="minimal-select pagination-btn"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -918,8 +1092,81 @@ const Dashboard = ({
             )}
           </div>
         </div>
-      )}      {/* Delete Confirmation Modal */}
-      {patientToDelete && (
+      )}
+
+      {selectedDeletedEntry && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>{selectedDeletedEntry.payload?.name || 'Deleted Personnel'} <span style={{ color: '#94a3b8', fontSize: '1.2rem', fontWeight: 500 }}>#{selectedDeletedEntry.originalId}</span></h2>
+              <button className="close-btn" onClick={() => { setSelectedDeletedEntry(null); setActiveProfile(null); }}>×</button>
+            </div>
+
+            <div className="modal-tabs">
+              {deletedEntryProfiles.length > 0 ? deletedEntryProfiles.map((profile, index) => (
+                <button
+                  key={`${selectedDeletedEntry.originalId}-${index}`}
+                  className={`tab-btn ${activeProfile === profile ? 'active' : ''}`}
+                  onClick={() => setActiveProfile(profile)}
+                >
+                  {profile.date || `Record ${index + 1}`}
+                </button>
+              )) : (
+                <button className="tab-btn active" type="button">Deleted Snapshot</button>
+              )}
+            </div>
+
+            <div className="modal-details">
+              <div className="detail-card">
+                <h3>Deleted Personnel Info</h3>
+                <div className="detail-row"><span className="detail-label">Full Name</span><span className="detail-value">{selectedDeletedEntry.payload?.name || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Gender</span><span className="detail-value">{selectedDeletedEntry.payload?.gender || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Birthday</span><span className="detail-value">{selectedDeletedEntry.payload?.birthday || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Age</span><span className="detail-value">{selectedDeletedEntry.payload?.age || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Agency</span><span className="detail-value">{selectedDeletedEntry.payload?.agency || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Unit</span><span className="detail-value">{selectedDeletedEntry.payload?.unit || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Deleted At</span><span className="detail-value">{selectedDeletedEntry.deletedAt ? new Date(selectedDeletedEntry.deletedAt).toLocaleString() : 'Unknown time'}</span></div>
+                <div className="detail-row"><span className="detail-label">Source</span><span className="detail-value">{selectedDeletedEntry.deletedFromArchive ? 'Trashbin / Archived' : 'Active Records'}</span></div>
+              </div>
+
+              <div className="detail-card">
+                <h3>Medical Record Snapshot</h3>
+                <div className="detail-row"><span className="detail-label">Last Medical Date</span><span className="detail-value">{selectedDeletedEntry.payload?.lastMedicalDate || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Location</span><span className="detail-value">{selectedDeletedEntry.payload?.medicalExamLocation || 'Unknown'}</span></div>
+                <div className="detail-row"><span className="detail-label">Findings</span><span className="detail-value">{selectedDeletedEntry.payload?.findings || 'Complete'}</span></div>
+                <div className="detail-row"><span className="detail-label">Fitness Status</span><span className="detail-value">{selectedDeletedEntry.payload?.physicalFitnessStatus || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Capability</span><span className="detail-value">{selectedDeletedEntry.payload?.physicalFitness?.capability || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Height</span><span className="detail-value">{selectedDeletedEntry.payload?.physicalFitness?.height || 'N/A'}</span></div>
+                <div className="detail-row"><span className="detail-label">Weight</span><span className="detail-value">{selectedDeletedEntry.payload?.physicalFitness?.weight || 'N/A'}</span></div>
+                <div className="findings-block" style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', marginTop: '20px' }}>
+                  <span style={{ display: 'block', marginBottom: '10px', color: '#94a3b8', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Previous Medical Notes</span>
+                  <div style={{ color: '#e2e8f0', fontSize: '1.05rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                    {selectedDeletedEntry.payload?.findings || 'No detailed findings recorded.'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="detail-card" style={{ gridColumn: '1 / -1', minHeight: 'unset' }}>
+                <h3>Previous Medical History</h3>
+                {Array.isArray(selectedDeletedEntry.payload?.history) && selectedDeletedEntry.payload.history.length > 0 ? (
+                  <div className="deleted-history-list">
+                    {selectedDeletedEntry.payload.history.map((record, index) => (
+                      <div key={`${selectedDeletedEntry.originalId}-history-${index}`} className="deleted-history-item">
+                        <strong>{record.date || `History ${index + 1}`}</strong>
+                        <span>{record.medicalExamLocation || 'Unknown'} / {record.findings || 'No notes'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="calendar-empty">No previous medical history recorded for this deleted personnel.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {false && patientToDelete && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div style={{ fontSize: '3.5rem', marginBottom: '15px' }}>⚠️</div>

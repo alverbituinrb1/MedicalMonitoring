@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Personnel = require('../models/Personnel');
+const DeletedPersonnel = require('../models/DeletedPersonnel');
 
 const buildHistoryKey = (record = {}) => ([
   record.date || '',
@@ -28,6 +29,60 @@ const mergeHistoryRecords = (existingHistory = [], incomingHistory = []) => {
   return merged;
 };
 
+const buildMedicalSnapshotKey = (record = {}) => JSON.stringify({
+  lastMedicalDate: record.lastMedicalDate || '',
+  findings: record.findings || '',
+  medicalExamLocation: record.medicalExamLocation || '',
+  physicalFitnessStatus: record.physicalFitnessStatus || '',
+  physicalFitness: {
+    bloodPressure: record.physicalFitness?.bloodPressure || '',
+    heartRate: record.physicalFitness?.heartRate || '',
+    height: record.physicalFitness?.height || '',
+    weight: record.physicalFitness?.weight || '',
+    capability: record.physicalFitness?.capability || ''
+  },
+  scanFileName: record.scanFileName || '',
+  scanFileURL: record.scanFileURL || ''
+});
+
+const hasMedicalRecordChanges = (existingRecord = {}, nextRecord = {}) => (
+  buildMedicalSnapshotKey(existingRecord) !== buildMedicalSnapshotKey(nextRecord)
+);
+
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+const buildDuplicateSignature = (record = {}) => ([
+  normalizeText(record.name),
+  normalizeText(record.birthday),
+  normalizeText(record.agency),
+  normalizeText(record.unit)
+].join('|'));
+const hasActiveDuplicate = async (record) => {
+  if (!record) return false;
+
+  if (record.id) {
+    const duplicateById = await Personnel.exists({
+      id: record.id,
+      isArchived: false
+    });
+
+    if (duplicateById) {
+      return true;
+    }
+  }
+
+  const activeCandidates = await Personnel.find({ isArchived: false })
+    .select('name birthday agency unit')
+    .lean();
+
+  const recordSignature = buildDuplicateSignature(record);
+  if (!recordSignature.replace(/\|/g, '')) {
+    return false;
+  }
+
+  return activeCandidates.some((candidate) => buildDuplicateSignature(candidate) === recordSignature);
+};
+
 // GET all active personnel
 router.get('/', async (req, res) => {
   try {
@@ -41,7 +96,21 @@ router.get('/', async (req, res) => {
 // GET all archived personnel
 router.get('/archived', async (req, res) => {
   try {
-    const records = await Personnel.find({ isArchived: true }).sort({ updatedAt: -1 });
+    const records = await Personnel.find({ isArchived: true }).sort({ updatedAt: -1 }).lean();
+    const recordsWithDuplicateState = await Promise.all(records.map(async (record) => ({
+      ...record,
+      hasActiveDuplicate: await hasActiveDuplicate(record)
+    })));
+    res.json(recordsWithDuplicateState);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET permanently deleted personnel log
+router.get('/deleted', async (req, res) => {
+  try {
+    const records = await DeletedPersonnel.find({}).sort({ deletedAt: -1 }).limit(100);
     res.json(records);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -74,6 +143,16 @@ router.put('/:id', async (req, res) => {
       history: mergeHistoryRecords(existingRecord.history, req.body.history)
     };
 
+    if (hasMedicalRecordChanges(existingRecord, payload)) {
+      await DeletedPersonnel.create({
+        originalId: existingRecord.id,
+        deletedAt: new Date(),
+        deletedFromArchive: Boolean(existingRecord.isArchived),
+        reason: 'medical-update',
+        payload: existingRecord.toObject()
+      });
+    }
+
     await Personnel.findOneAndUpdate({ id: req.params.id }, payload, { new: true });
     const allRecords = await Personnel.find({ isArchived: false }).sort({ createdAt: -1 });
     res.json(allRecords);
@@ -102,11 +181,37 @@ router.put('/:id/unarchive', async (req, res) => {
   }
 });
 
-// DELETE entirely (permanent from trashbin)
+// DELETE moves active records to Trashbin; archived records are permanently deleted and logged
 router.delete('/:id', async (req, res) => {
   try {
-    await Personnel.findOneAndDelete({ id: req.params.id });
-    res.json({ success: true });
+    const record = await Personnel.findOne({ id: req.params.id });
+
+    if (!record) {
+      return res.status(404).json({ error: 'Personnel record not found' });
+    }
+
+    if (!record.isArchived) {
+      record.isArchived = true;
+      await record.save();
+
+      return res.json({ success: true, action: 'archived', record });
+    }
+
+    await DeletedPersonnel.create({
+      originalId: record.id,
+      deletedAt: new Date(),
+      deletedFromArchive: true,
+      reason: 'trashbin',
+      payload: record.toObject()
+    });
+
+    await Personnel.deleteOne({ id: req.params.id });
+
+    return res.json({
+      success: true,
+      action: 'deleted',
+      deletedId: req.params.id
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
