@@ -7,6 +7,7 @@ const Sidebar = ({
   isSidebarOpen,
   setIsSidebarOpen,
   currentUser,
+  onChangeAdminPassword,
   onLogout
 }) => {
   const navItems = [
@@ -47,6 +48,19 @@ const Sidebar = ({
           <circle cx="4" cy="18" r="1"></circle>
         </svg>
       )
+    },
+    {
+      id: 'personnel-trashbin',
+      label: 'Personnel Trashbin',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="nav-svg-icon">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6l-1 14H6L5 6"></path>
+          <path d="M10 11v6"></path>
+          <path d="M14 11v6"></path>
+          <path d="M9 6V4h6v2"></path>
+        </svg>
+      )
     }
   ];
 
@@ -75,7 +89,7 @@ const Sidebar = ({
               <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
             </svg>
           </div>
-          {isSidebarOpen && <span className="brand-text">APE MONITORING</span>}
+          {isSidebarOpen && <span className="brand-text">MEDICAL MONITORING</span>}
         </div>
 
         <button
@@ -115,7 +129,22 @@ const Sidebar = ({
             </div>
           )}
         </div>
-        
+        {currentUser?.role === 'admin' && (
+          <button
+            className="nav-link"
+            onClick={onChangeAdminPassword}
+            title={!isSidebarOpen ? 'Change Password' : undefined}
+          >
+            <span className="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="nav-svg-icon">
+                <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            {isSidebarOpen && <span className="link-text">Change Password</span>}
+          </button>
+        )}
+
         <button
           className="nav-link logout-btn"
           onClick={onLogout}
