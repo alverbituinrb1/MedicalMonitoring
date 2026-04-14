@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import './CalendarView.css';
 
+const ITEMS_PER_PAGE = 6;
+
 const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   const [activeTab, setActiveTab] = useState('medical');
   const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState('All');
+  const [medicalPages, setMedicalPages] = useState({
+    overdue: 1,
+    dueSoon: 1,
+    upcoming: 1
+  });
   const currentMonthNumber = new Date().getMonth() + 1;
+
   const normalizedMedicalSchedule = [...medicalSchedule].sort((left, right) => {
     if (left.daysUntil !== right.daysUntil) return left.daysUntil - right.daysUntil;
     return left.name.localeCompare(right.name);
@@ -13,7 +21,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   const scheduleGroups = {
     overdue: normalizedMedicalSchedule.filter((item) => item.status === 'Overdue'),
     dueSoon: normalizedMedicalSchedule.filter((item) => item.status === 'Due Soon'),
-    upcoming: normalizedMedicalSchedule.filter((item) => item.status === 'Healthy').slice(0, 12)
+    upcoming: normalizedMedicalSchedule.filter((item) => item.status === 'Healthy')
   };
 
   const totalBirthdays = birthdaysByMonth.reduce((total, month) => total + month.count, 0);
@@ -24,6 +32,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
       return left.name.localeCompare(right.name);
     })
   }));
+
   const displayedBirthdayGroups = (selectedBirthdayMonth === 'All'
     ? normalizedBirthdayGroups
     : normalizedBirthdayGroups.filter((group) => String(group.monthNumber) === selectedBirthdayMonth))
@@ -33,6 +42,94 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
       const rightOffset = (right.monthNumber - currentMonthNumber + 12) % 12;
       return leftOffset - rightOffset;
     });
+
+  const handleMedicalPageChange = (key, nextPage, totalPages) => {
+    const safePage = Math.min(Math.max(nextPage, 1), totalPages);
+    setMedicalPages((current) => ({
+      ...current,
+      [key]: safePage
+    }));
+  };
+
+  const renderMedicalRow = (item, variant, label, timingText) => (
+    <div key={item.id} className={`calendar-schedule-item ${variant}`}>
+      <div className="schedule-item-primary">
+        <div className="item-details">
+          <div className="calendar-item-name">{item.name}</div>
+          <div className="calendar-item-meta">{item.agency} • {item.unit}</div>
+        </div>
+      </div>
+      <div className="schedule-item-secondary">
+        <div className="schedule-item-block">
+          <span className="calendar-item-date-label">Status</span>
+          <span className={`schedule-status-pill ${variant}`}>{label}</span>
+        </div>
+        <div className="schedule-item-block">
+          <span className="calendar-item-date-label">Exam Date</span>
+          <div className="calendar-item-date">{item.nextMedicalDate}</div>
+        </div>
+        <div className="schedule-item-block urgency">
+          <span className="calendar-item-date-label">Time Remaining</span>
+          <span className={`calendar-days-late ${variant === 'neutral' ? 'neutral' : ''}`}>{timingText}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMedicalSection = (key, title, subtitle, dotClass, badgeClass, items, emptyText, variant, labelBuilder, timingBuilder) => {
+    const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+    const currentPage = Math.min(medicalPages[key] || 1, totalPages);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pagedItems = items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    return (
+      <section className={`calendar-schedule-section ${variant}`}>
+        <div className="calendar-schedule-section-header">
+          <div className="calendar-schedule-section-title">
+            <span className={`dot ${dotClass}`}></span>
+            <div>
+              <h3>{title}</h3>
+              <p>{subtitle}</p>
+            </div>
+          </div>
+          <span className={`badge ${badgeClass}`}>{items.length}</span>
+        </div>
+
+        <div className="column-content">
+          {pagedItems.length > 0
+            ? pagedItems.map((item) => renderMedicalRow(item, variant, labelBuilder(item), timingBuilder(item)))
+            : <div className="calendar-empty">{emptyText}</div>}
+        </div>
+
+        {items.length > ITEMS_PER_PAGE && (
+          <div className="medical-pagination">
+            <div className="medical-pagination-summary">
+              Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, items.length)} of {items.length}
+            </div>
+            <div className="medical-pagination-controls">
+              <button
+                type="button"
+                className="medical-pagination-button"
+                onClick={() => handleMedicalPageChange(key, currentPage - 1, totalPages)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <span className="medical-pagination-current">Page {currentPage} of {totalPages}</span>
+              <button
+                type="button"
+                className="medical-pagination-button"
+                onClick={() => handleMedicalPageChange(key, currentPage + 1, totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  };
 
   return (
     <div className="calendar-view fade-in">
@@ -48,21 +145,21 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
 
       <div className="calendar-summary-grid">
         <div className="calendar-summary-card overdue">
-          <div className="summary-icon">⚠️</div>
+          <div className="summary-icon" aria-hidden="true">AL</div>
           <div className="summary-info">
             <span className="calendar-summary-label">Overdue Medical</span>
             <strong>{scheduleGroups.overdue.length}</strong>
           </div>
         </div>
         <div className="calendar-summary-card due-soon">
-          <div className="summary-icon">⏳</div>
+          <div className="summary-icon" aria-hidden="true">30</div>
           <div className="summary-info">
             <span className="calendar-summary-label">Due Soon</span>
             <strong>{scheduleGroups.dueSoon.length}</strong>
           </div>
         </div>
         <div className="calendar-summary-card birthdays">
-          <div className="summary-icon">🎂</div>
+          <div className="summary-icon" aria-hidden="true">BD</div>
           <div className="summary-info">
             <span className="calendar-summary-label">Total Birthdays</span>
             <strong>{totalBirthdays}</strong>
@@ -71,17 +168,17 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
       </div>
 
       <div className="calendar-tabs">
-        <button 
+        <button
           className={`calendar-tab ${activeTab === 'medical' ? 'active' : ''}`}
           onClick={() => setActiveTab('medical')}
         >
-          🏥 Medical Schedule
+          Medical Schedule
         </button>
-        <button 
+        <button
           className={`calendar-tab ${activeTab === 'birthdays' ? 'active' : ''}`}
           onClick={() => setActiveTab('birthdays')}
         >
-          🎂 Birthday Calendar
+          Birthday Calendar
         </button>
       </div>
 
@@ -113,72 +210,45 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               </div>
             </div>
 
-            <div className="calendar-schedule-columns">
-              <div className="calendar-schedule-column">
-                <div className="column-header">
-                  <span className="dot overdue"></span>
-                  <h3>Overdue</h3>
-                  <span className="badge danger">{scheduleGroups.overdue.length}</span>
-                </div>
-                <div className="column-content">
-                  {scheduleGroups.overdue.length > 0 ? scheduleGroups.overdue.map((item) => (
-                    <div key={item.id} className="calendar-schedule-item danger">
-                      <div className="item-details">
-                        <div className="calendar-item-name">{item.name}</div>
-                        <div className="calendar-item-meta">{item.agency} • {item.unit}</div>
-                      </div>
-                      <div className="item-action">
-                        <div className="calendar-item-date">{item.nextMedicalDate}</div>
-                        <div className="calendar-days-late">{Math.abs(item.daysUntil)} days late</div>
-                      </div>
-                    </div>
-                  )) : <div className="calendar-empty">No overdue schedules.</div>}
-                </div>
-              </div>
+            <div className="calendar-schedule-sections">
+              {renderMedicalSection(
+                'overdue',
+                'Overdue',
+                'Immediate attention required for personnel past the target exam date.',
+                'overdue',
+                'danger',
+                scheduleGroups.overdue,
+                'No overdue schedules.',
+                'danger',
+                () => 'Immediate action',
+                (item) => `${Math.abs(item.daysUntil)} days late`
+              )}
 
-              <div className="calendar-schedule-column">
-                <div className="column-header">
-                  <span className="dot due-soon"></span>
-                  <h3>Due Soon</h3>
-                  <span className="badge warning">{scheduleGroups.dueSoon.length}</span>
-                </div>
-                <div className="column-content">
-                  {scheduleGroups.dueSoon.length > 0 ? scheduleGroups.dueSoon.map((item) => (
-                    <div key={item.id} className="calendar-schedule-item warning">
-                      <div className="item-details">
-                        <div className="calendar-item-name">{item.name}</div>
-                        <div className="calendar-item-meta">{item.agency} • {item.unit}</div>
-                      </div>
-                      <div className="item-action">
-                        <div className="calendar-item-date">{item.nextMedicalDate}</div>
-                        <div className="calendar-days-late">{item.daysUntil} days left</div>
-                      </div>
-                    </div>
-                  )) : <div className="calendar-empty">No due-soon schedules.</div>}
-                </div>
-              </div>
+              {renderMedicalSection(
+                'dueSoon',
+                'Due Soon',
+                'Personnel that should be booked within the next 30 days.',
+                'due-soon',
+                'warning',
+                scheduleGroups.dueSoon,
+                'No due-soon schedules.',
+                'warning',
+                () => 'Schedule soon',
+                (item) => `${item.daysUntil} days left`
+              )}
 
-              <div className="calendar-schedule-column">
-                <div className="column-header">
-                  <span className="dot upcoming"></span>
-                  <h3>Upcoming</h3>
-                  <span className="badge safe">{scheduleGroups.upcoming.length}</span>
-                </div>
-                <div className="column-content">
-                  {scheduleGroups.upcoming.length > 0 ? scheduleGroups.upcoming.map((item) => (
-                    <div key={item.id} className="calendar-schedule-item neutral">
-                      <div className="item-details">
-                        <div className="calendar-item-name">{item.name}</div>
-                        <div className="calendar-item-meta">{item.agency} • {item.unit}</div>
-                      </div>
-                      <div className="item-action">
-                        <div className="calendar-item-date">{item.nextMedicalDate}</div>
-                        <div className="calendar-days-late neutral">{item.daysUntil} days ahead</div>
-                      </div>
-                    </div>
-                  )) : <div className="calendar-empty">No upcoming schedules.</div>}
-                </div>
-              </div>
+              {renderMedicalSection(
+                'upcoming',
+                'Upcoming',
+                'Personnel currently on schedule and not yet at risk.',
+                'upcoming',
+                'safe',
+                scheduleGroups.upcoming,
+                'No upcoming schedules.',
+                'neutral',
+                () => 'On track',
+                (item) => `${item.daysUntil} days ahead`
+              )}
             </div>
           </section>
         )}
