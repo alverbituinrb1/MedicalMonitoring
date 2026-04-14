@@ -9,6 +9,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
   const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState('All');
   const [medicalQuery, setMedicalQuery] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
+  const [activeMedicalSection, setActiveMedicalSection] = useState('overdue');
   const [medicalPages, setMedicalPages] = useState({
     overdue: 1,
     dueSoon: 1,
@@ -40,6 +41,45 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
     dueSoon: filteredMedicalSchedule.filter((item) => item.status === 'Due Soon'),
     upcoming: filteredMedicalSchedule.filter((item) => item.status === 'Healthy')
   };
+
+  const medicalSectionConfigs = [
+    {
+      key: 'overdue',
+      title: 'Overdue',
+      subtitle: 'Immediate attention required for personnel past the target exam date.',
+      dotClass: 'overdue',
+      badgeClass: 'danger',
+      variant: 'danger',
+      emptyText: 'No overdue schedules found.',
+      labelBuilder: () => 'Immediate action',
+      timingBuilder: (item) => `${Math.abs(item.daysUntil)} days late`
+    },
+    {
+      key: 'dueSoon',
+      title: 'Due Soon',
+      subtitle: 'Personnel that should be booked within the next 30 days.',
+      dotClass: 'due-soon',
+      badgeClass: 'warning',
+      variant: 'warning',
+      emptyText: 'No due-soon schedules found.',
+      labelBuilder: () => 'Schedule soon',
+      timingBuilder: (item) => `${item.daysUntil} days left`
+    },
+    {
+      key: 'upcoming',
+      title: 'Upcoming',
+      subtitle: 'Personnel currently on schedule and not yet at risk.',
+      dotClass: 'upcoming',
+      badgeClass: 'safe',
+      variant: 'neutral',
+      emptyText: 'No upcoming schedules found.',
+      labelBuilder: () => 'On track',
+      timingBuilder: (item) => `${item.daysUntil} days ahead`
+    }
+  ];
+
+  const activeMedicalConfig = medicalSectionConfigs.find((section) => section.key === activeMedicalSection) || medicalSectionConfigs[0];
+  const activeMedicalItems = scheduleGroups[activeMedicalConfig.key] || [];
 
   const totalBirthdays = birthdaysByMonth.reduce((total, month) => total + month.count, 0);
   const normalizedBirthdayGroups = birthdaysByMonth.map((group) => ({
@@ -269,44 +309,32 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               </div>
             )}
 
-            <div className="calendar-schedule-sections">
-              {renderMedicalSection(
-                'overdue',
-                'Overdue',
-                'Immediate attention required for personnel past the target exam date.',
-                'overdue',
-                'danger',
-                scheduleGroups.overdue,
-                'No overdue schedules found.',
-                'danger',
-                () => 'Immediate action',
-                (item) => `${Math.abs(item.daysUntil)} days late`
-              )}
+            <div className="medical-section-switcher">
+              {medicalSectionConfigs.map((section) => (
+                <button
+                  key={section.key}
+                  type="button"
+                  className={`medical-section-chip ${activeMedicalSection === section.key ? 'active' : ''} ${section.variant}`}
+                  onClick={() => setActiveMedicalSection(section.key)}
+                >
+                  <span>{section.title}</span>
+                  <strong>{scheduleGroups[section.key].length}</strong>
+                </button>
+              ))}
+            </div>
 
+            <div className="calendar-schedule-sections single-view">
               {renderMedicalSection(
-                'dueSoon',
-                'Due Soon',
-                'Personnel that should be booked within the next 30 days.',
-                'due-soon',
-                'warning',
-                scheduleGroups.dueSoon,
-                'No due-soon schedules found.',
-                'warning',
-                () => 'Schedule soon',
-                (item) => `${item.daysUntil} days left`
-              )}
-
-              {renderMedicalSection(
-                'upcoming',
-                'Upcoming',
-                'Personnel currently on schedule and not yet at risk.',
-                'upcoming',
-                'safe',
-                scheduleGroups.upcoming,
-                'No upcoming schedules found.',
-                'neutral',
-                () => 'On track',
-                (item) => `${item.daysUntil} days ahead`
+                activeMedicalConfig.key,
+                activeMedicalConfig.title,
+                activeMedicalConfig.subtitle,
+                activeMedicalConfig.dotClass,
+                activeMedicalConfig.badgeClass,
+                activeMedicalItems,
+                activeMedicalConfig.emptyText,
+                activeMedicalConfig.variant,
+                activeMedicalConfig.labelBuilder,
+                activeMedicalConfig.timingBuilder
               )}
             </div>
           </section>
