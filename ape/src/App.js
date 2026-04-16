@@ -920,7 +920,7 @@ function App() {
           <PatientForm onAddPersonnel={addPersonnel} navigateBack={() => setCurrentView('dashboard')} />
         )}
         <footer style={{ textAlign: 'center', padding: '25px 0 10px', color: '#64748b', fontSize: '0.85rem', marginTop: 'auto', width: '100%' }}>
-          &copy; {new Date().getFullYear()} All rights reserved ALVERBITUIN 2026
+          &copy; {new Date().getFullYear()} All rights reserved ALVER BITUIN
         </footer>
       </div>
 
