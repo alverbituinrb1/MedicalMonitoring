@@ -272,15 +272,21 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
       <div className="folder-wrapper">
         {/* Tab Header (Looks like manila folder tabs) */}
         <div className="folder-tabs">
-          {tabs.map((tab) => (
-            <div 
-              key={tab.id}
-              className={`folder-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleTabClick(tab.id)}
-            >
-              {tab.label}
-            </div>
-          ))}
+          {tabs.map((tab, idx) => {
+            const currentIndex = tabs.findIndex(t => t.id === activeTab);
+            const isFutureTab = idx > currentIndex;
+            const isTabDisabled = isFutureTab && (idx > currentIndex + 1 || validateTab(activeTab) !== '');
+            return (
+              <div 
+                key={tab.id}
+                className={`folder-tab ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => !isTabDisabled && handleTabClick(tab.id)}
+                style={isTabDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
+                {tab.label}
+              </div>
+            );
+          })}
         </div>
 
         {/* Folder Body (Glassmorphism card) */}
@@ -575,10 +581,16 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
               className="btn btn-secondary" 
               onClick={goBack} 
               disabled={activeTab === tabs[0].id}
+              style={activeTab === tabs[0].id ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               Back
             </button>
-            <button className="btn btn-primary" onClick={goNext}>
+            <button 
+              className="btn btn-primary" 
+              onClick={goNext}
+              disabled={validateTab(activeTab) !== ''}
+              style={validateTab(activeTab) !== '' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
               {activeTab === tabs[tabs.length - 1].id ? 'Submit Data' : 'Next Step'}
             </button>
           </div>
