@@ -141,7 +141,7 @@ const parsePersonnelCsv = (csvText) => {
   }
 
   const firstLine = lines[0].replace(/^\uFEFF/, '');
-  
+
   // Auto-detect delimiter
   let delimiter = ',';
   if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) {
@@ -249,24 +249,24 @@ const getNextMedicalDate = (birthdayStr, lastMedicalStr) => {
   if (!birthdayStr || birthdayStr === 'N/A') return 'N/A';
   const bDate = new Date(birthdayStr);
   if (isNaN(bDate.getTime())) return 'N/A';
-  
+
   const bMonth = bDate.getMonth();
   const bDay = bDate.getDate();
-  
+
   const today = new Date();
-  today.setHours(0,0,0,0);
-  
+  today.setHours(0, 0, 0, 0);
+
   const currentYear = today.getFullYear();
   let thisYearBday = new Date(currentYear, bMonth, bDay);
-  
+
   let targetDate;
   if (lastMedicalStr && lastMedicalStr !== 'N/A') {
     const lastMed = new Date(lastMedicalStr);
     let minNext = new Date(lastMed.getFullYear(), lastMed.getMonth() + 10, lastMed.getDate());
-    
+
     let testBday = new Date(minNext.getFullYear(), bMonth, bDay);
     if (testBday < minNext) {
-       testBday = new Date(minNext.getFullYear() + 1, bMonth, bDay);
+      testBday = new Date(minNext.getFullYear() + 1, bMonth, bDay);
     }
     targetDate = testBday;
   } else {
@@ -288,7 +288,7 @@ const getMedicalSchedule = (records) => records
     }
 
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     const targetDate = parseDateKey(nextMedicalDate);
     if (!targetDate) {
       return null;
@@ -490,7 +490,7 @@ function App() {
       ]);
       const activeData = await activeRes.json();
       const archiveData = await archiveRes.json();
-      
+
       if (!activeRes.ok || !archiveRes.ok) {
         throw new Error(activeData.error || archiveData.error || 'Backend request failed');
       }
@@ -636,7 +636,7 @@ function App() {
           body: JSON.stringify(importedPersonnel)
         });
         const updatedList = await res.json();
-        
+
         if (!res.ok || updatedList.error) {
           throw new Error(updatedList.error || 'Failed to communicate with DB');
         }
@@ -684,10 +684,10 @@ function App() {
           writeCachedRecords(ACTIVE_CACHE_KEY, nextActive);
           return nextActive;
         });
-      setArchivedPersonnel(prev => {
-        const nextArchived = [data.record, ...prev];
-        writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
-        return nextArchived;
+        setArchivedPersonnel(prev => {
+          const nextArchived = [data.record, ...prev];
+          writeCachedRecords(ARCHIVED_CACHE_KEY, nextArchived);
+          return nextArchived;
         });
         setBackendStatus('online');
         setDataSource('live');
@@ -779,8 +779,8 @@ function App() {
 
   return (
     <div className="App">
-      <Sidebar 
-        currentView={currentView} 
+      <Sidebar
+        currentView={currentView}
         setCurrentView={handleViewChange}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -791,7 +791,7 @@ function App() {
           setCurrentView('dashboard');
         }}
       />
-      
+
       <div className={`main-content ${isSidebarOpen ? '' : 'expanded'}`}>
         <div className="birthday-notification-shell">
           {showBirthdayWidget ? (
@@ -810,47 +810,47 @@ function App() {
                 </button>
               </div>
               <button
-            type="button"
-            className={`birthday-bell-btn ${showBirthdayNotifications ? 'open' : ''}`}
-            onClick={() => setShowBirthdayNotifications((current) => !current)}
-            title={`${currentMonthBirthdays.length} birthday notification${currentMonthBirthdays.length === 1 ? '' : 's'} for ${currentMonthLabel}`}
-          >
-            <span className="birthday-bell-icon">🎂</span>
-            {currentMonthBirthdays.length > 0 && <span className="birthday-bell-count">{currentMonthBirthdays.length}</span>}
-          </button>
+                type="button"
+                className={`birthday-bell-btn ${showBirthdayNotifications ? 'open' : ''}`}
+                onClick={() => setShowBirthdayNotifications((current) => !current)}
+                title={`${currentMonthBirthdays.length} birthday notification${currentMonthBirthdays.length === 1 ? '' : 's'} for ${currentMonthLabel}`}
+              >
+                <span className="birthday-bell-icon">🎂</span>
+                {currentMonthBirthdays.length > 0 && <span className="birthday-bell-count">{currentMonthBirthdays.length}</span>}
+              </button>
 
               {showBirthdayNotifications && (
-            <div className="birthday-popover">
-              <div className="birthday-popover-header">
-                <div>
-                  <p className="birthday-popover-kicker">Monthly Birthday Notice</p>
-                  <h3>{currentMonthLabel} Celebrators</h3>
-                </div>
-                <span className="birthday-popover-badge">{currentMonthBirthdays.length}</span>
-              </div>
+                <div className="birthday-popover">
+                  <div className="birthday-popover-header">
+                    <div>
+                      <p className="birthday-popover-kicker">Monthly Birthday Notice</p>
+                      <h3>{currentMonthLabel} Celebrators</h3>
+                    </div>
+                    <span className="birthday-popover-badge">{currentMonthBirthdays.length}</span>
+                  </div>
 
-              {currentMonthBirthdays.length > 0 ? (
-                <div className="birthday-popover-list">
-                  {currentMonthBirthdays
-                    .slice()
-                    .sort((left, right) => {
-                      if (left.day !== right.day) return left.day - right.day;
-                      return left.name.localeCompare(right.name);
-                    })
-                    .map((entry) => (
-                      <div key={entry.id} className="birthday-popover-item">
-                        <div className="birthday-popover-day">{String(entry.day).padStart(2, '0')}</div>
-                        <div className="birthday-popover-meta">
-                          <strong>{entry.name}</strong>
-                          <span>{entry.agency} / {entry.unit}</span>
-                        </div>
-                      </div>
-                    ))}
+                  {currentMonthBirthdays.length > 0 ? (
+                    <div className="birthday-popover-list">
+                      {currentMonthBirthdays
+                        .slice()
+                        .sort((left, right) => {
+                          if (left.day !== right.day) return left.day - right.day;
+                          return left.name.localeCompare(right.name);
+                        })
+                        .map((entry) => (
+                          <div key={entry.id} className="birthday-popover-item">
+                            <div className="birthday-popover-day">{String(entry.day).padStart(2, '0')}</div>
+                            <div className="birthday-popover-meta">
+                              <strong>{entry.name}</strong>
+                              <span>{entry.agency} / {entry.unit}</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="birthday-popover-empty">No birthdays recorded for {currentMonthLabel}.</div>
+                  )}
                 </div>
-              ) : (
-                <div className="birthday-popover-empty">No birthdays recorded for {currentMonthLabel}.</div>
-              )}
-            </div>
               )}
             </>
           ) : (
@@ -875,16 +875,16 @@ function App() {
           </button>
         )}
         {currentView === 'dashboard' ? (
-          <Dashboard 
-            personnelList={personnelList} 
+          <Dashboard
+            personnelList={personnelList}
             archivedPersonnel={archivedPersonnel}
             deletedPersonnelLog={deletedPersonnelLog}
             medicalSchedule={medicalSchedule}
-            onDeletePersonnel={deletePersonnel} 
+            onDeletePersonnel={deletePersonnel}
             onArchivePersonnel={archivePersonnel}
             onUnarchivePersonnel={unarchivePersonnel}
             onDeleteArchived={deleteArchived}
-            onUpdatePersonnel={updatePersonnel} 
+            onUpdatePersonnel={updatePersonnel}
             onImportCsv={importPersonnelCsv}
             onExportCsv={exportPersonnelCsv}
             currentUser={currentUser}
@@ -893,16 +893,16 @@ function App() {
             viewMode="dashboard"
           />
         ) : currentView === 'personnel-list' || currentView === 'personnel-trashbin' ? (
-          <Dashboard 
-            personnelList={personnelList} 
+          <Dashboard
+            personnelList={personnelList}
             archivedPersonnel={archivedPersonnel}
             deletedPersonnelLog={deletedPersonnelLog}
             medicalSchedule={medicalSchedule}
-            onDeletePersonnel={deletePersonnel} 
+            onDeletePersonnel={deletePersonnel}
             onArchivePersonnel={archivePersonnel}
             onUnarchivePersonnel={unarchivePersonnel}
             onDeleteArchived={deleteArchived}
-            onUpdatePersonnel={updatePersonnel} 
+            onUpdatePersonnel={updatePersonnel}
             onImportCsv={importPersonnelCsv}
             onExportCsv={exportPersonnelCsv}
             currentUser={currentUser}
@@ -919,6 +919,9 @@ function App() {
         ) : (
           <PatientForm onAddPersonnel={addPersonnel} navigateBack={() => setCurrentView('dashboard')} />
         )}
+        <footer style={{ textAlign: 'center', padding: '25px 0 10px', color: '#64748b', fontSize: '0.85rem', marginTop: 'auto', width: '100%' }}>
+          &copy; {new Date().getFullYear()} All rights reserved ALVERBITUIN 2026
+        </footer>
       </div>
 
       {passwordModal.isOpen && (
