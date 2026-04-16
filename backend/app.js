@@ -1,30 +1,10 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
 
 const personnelRoutes = require('./routes/personnelRoutes');
+const { mongoose, ensureMongoConnection } = require('./mongo');
 
 const app = express();
-const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ape-monitoring';
-
-let connectionPromise = null;
-
-const ensureMongoConnection = async () => {
-  if (mongoose.connection.readyState === 1) {
-    return mongoose.connection;
-  }
-
-  if (!connectionPromise) {
-    connectionPromise = mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000
-    }).finally(() => {
-      connectionPromise = null;
-    });
-  }
-
-  return connectionPromise;
-};
 
 app.use(cors({
   origin: process.env.FRONTEND_ORIGIN ? process.env.FRONTEND_ORIGIN.split(',').map((origin) => origin.trim()) : true

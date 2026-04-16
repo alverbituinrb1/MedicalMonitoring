@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
-const mongoose = require('mongoose');
-const { app, ensureMongoConnection } = require('./app');
+const { app } = require('./app');
+const { mongoose, ensureMongoConnection } = require('./mongo');
 
 const frontendBuildPath = path.join(__dirname, '..', 'ape', 'build');
 

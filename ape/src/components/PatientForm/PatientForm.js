@@ -154,7 +154,70 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
     }
   };
 
+  const validateTab = (tabId) => {
+    switch (tabId) {
+      case 'name':
+        if (!formData.firstName.trim() || !formData.lastName.trim()) return 'Please fill in both first and last name.';
+        break;
+      case 'birthday':
+        if (!formData.birthday) return 'Please select a birthday.';
+        break;
+      case 'age':
+        if (!String(formData.age).trim()) return 'Please enter age.';
+        break;
+      case 'gender':
+        if (!formData.gender) return 'Please select a gender.';
+        break;
+      case 'employment':
+        if (!formData.designation.trim() || !formData.unit.trim() || !formData.agency.trim()) return 'Please fill in designation, unit, and agency.';
+        break;
+      case 'physical':
+        if (!String(formData.height).trim() || !String(formData.weight).trim()) return 'Please fill in height and weight.';
+        break;
+      case 'lastMedical':
+        if (!formData.lastMedicalDate || !formData.medicalExamLocation.trim()) return 'Please fill in the date of last medical exam and location.';
+        break;
+      default:
+        break;
+    }
+    return '';
+  };
+
+  const handleTabClick = (targetTabId) => {
+    if (targetTabId === activeTab) return;
+
+    const currentIndex = tabs.findIndex(t => t.id === activeTab);
+    const targetIndex = tabs.findIndex(t => t.id === targetTabId);
+    
+    // Allow going backwards freely
+    if (targetIndex < currentIndex) {
+      setActiveTab(targetTabId);
+      return;
+    }
+
+    // Block skipping multiple steps
+    if (targetIndex > currentIndex + 1) {
+      alert("Please complete the steps in order.");
+      return;
+    }
+
+    // Validate current tab before moving forward
+    const errorMsg = validateTab(activeTab);
+    if (errorMsg) {
+      alert(errorMsg);
+      return;
+    }
+
+    setActiveTab(targetTabId);
+  };
+
   const goNext = () => {
+    const errorMsg = validateTab(activeTab);
+    if (errorMsg) {
+      alert(errorMsg);
+      return;
+    }
+
     const currentIndex = tabs.findIndex(t => t.id === activeTab);
     if (currentIndex < tabs.length - 1) {
       setActiveTab(tabs[currentIndex + 1].id);
@@ -210,7 +273,7 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
             <div 
               key={tab.id}
               className={`folder-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
             >
               {tab.label}
             </div>
