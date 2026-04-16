@@ -1,0 +1,215 @@
+.loading-page-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  background-color: #020617; /* Very dark slate blue/black */
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(74, 222, 128, 0.08), transparent 25%);
+  position: relative;
+  overflow: hidden;
+  z-index: 9999;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-icon-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.loading-glow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(59, 130, 246, 0) 70%);
+  border-radius: 50%;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.loading-cross-wrapper {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: float-cross 3s ease-in-out infinite;
+}
+
+.medical-cross {
+  width: 32px;
+  height: 32px;
+  position: relative;
+}
+
+.medical-cross::before, .medical-cross::after {
+  content: '';
+  position: absolute;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+}
+
+.medical-cross::before {
+  top: 0;
+  left: 10px;
+  width: 12px;
+  height: 32px;
+}
+
+.medical-cross::after {
+  top: 10px;
+  left: 0;
+  width: 32px;
+  height: 12px;
+}
+
+.loading-spinner-svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: rotate-spinner 2s linear infinite;
+  transform-origin: center;
+}
+
+.spinner-track {
+  fill: transparent;
+  stroke: rgba(148, 163, 184, 0.1);
+  stroke-width: 3;
+}
+
+.spinner-indicator {
+  fill: transparent;
+  stroke: url(#spinner-gradient);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 283; /* 2 * PI * R where R=45 -> ~283 */
+  stroke-dashoffset: 210; /* Leaves about a quarter of the circle */
+  animation: spinner-dash 2s ease-in-out infinite;
+}
+
+.loading-title {
+  color: #f8fafc;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+  background: linear-gradient(to right, #f8fafc, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+}
+
+.loading-subtitle {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0 0 30px 0;
+  height: 20px;
+  text-align: center;
+  transition: opacity 0.5s ease;
+  animation: fade-text 2s ease-in-out infinite alternate;
+}
+
+.loading-progress-bar {
+  width: 200px;
+  height: 4px;
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, #3b82f6, #60a5fa, transparent);
+  border-radius: 999px;
+  animation: loading-bar-move 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes rotate-spinner {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinner-dash {
+  0% {
+    stroke-dasharray: 1, 283;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 150, 283;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 150, 283;
+    stroke-dashoffset: -283;
+  }
+}
+
+@keyframes pulse-glow {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+@keyframes float-cross {
+  0% {
+    transform: translateY(0px) scale(0.95);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0px) scale(0.95);
+  }
+}
+
+@keyframes fade-text {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@keyframes loading-bar-move {
+  0% {
+    left: -50%;
+    width: 30%;
+  }
+  50% {
+    width: 60%;
+  }
+  100% {
+    left: 100%;
+    width: 30%;
+  }
+}

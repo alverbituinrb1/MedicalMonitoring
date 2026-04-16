@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, adminPassword }) => {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
 
@@ -9,7 +9,7 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setError('');
 
-    if (inputValue === 'admin123') {
+    if (inputValue === adminPassword) {
       onLogin({ role: 'admin' });
     } else {
       setError('Invalid admin password.');

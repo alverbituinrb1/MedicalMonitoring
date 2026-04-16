@@ -5,6 +5,7 @@ import PatientForm from './components/PatientForm/PatientForm';
 import Login from './components/Login/Login';
 import CalendarView from './components/CalendarView/CalendarView';
 import { BIRTHDAY_RECORDS_2026 } from './data/birthdayRecords';
+import LoadingPage from './components/LoadingPage/LoadingPage';
 import './App.css';
 
 const DEFAULT_ADMIN_PASSWORD = 'admin123';
@@ -355,6 +356,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [backendStatus, setBackendStatus] = useState('checking');
   const [dataSource, setDataSource] = useState('live');
+  const [isLoading, setIsLoading] = useState(true);
   const [adminPassword, setAdminPassword] = useState(DEFAULT_ADMIN_PASSWORD);
   const [showBirthdayNotifications, setShowBirthdayNotifications] = useState(false);
   const [showBirthdayWidget, setShowBirthdayWidget] = useState(true);
@@ -505,6 +507,7 @@ function App() {
       }
       setBackendStatus('online');
       setDataSource('live');
+      setTimeout(() => setIsLoading(false), 2000);
     } catch (err) {
       const cachedActive = readCachedRecords(ACTIVE_CACHE_KEY);
       const cachedArchived = readCachedRecords(ARCHIVED_CACHE_KEY);
@@ -522,6 +525,7 @@ function App() {
         setDataSource('empty');
       }
       setBackendStatus(await checkBackendHealth() ? 'online' : 'offline');
+      setTimeout(() => setIsLoading(false), 2000);
       console.error("Failed to fetch from MongoDB backend:", err);
     }
   }, []);
@@ -764,6 +768,10 @@ function App() {
       console.error('Failed to delete personnel from Trashbin', error);
     }
   };
+
+  if (isLoading) {
+    return <LoadingPage />;
+  }
 
   if (!currentUser) {
     return <Login onLogin={setCurrentUser} adminPassword={adminPassword} />;

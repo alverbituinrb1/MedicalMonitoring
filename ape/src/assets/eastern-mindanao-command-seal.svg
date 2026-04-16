@@ -1,0 +1,68 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 512) rotate(90) scale(430)">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E7EEF8"/>
+    </radialGradient>
+    <linearGradient id="sky" x1="512" y1="243" x2="512" y2="657" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#334DAA"/>
+      <stop offset="1" stop-color="#17185D"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="512" y1="656" x2="512" y2="804" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D6D57"/>
+      <stop offset="1" stop-color="#084E3E"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="512" y1="427" x2="512" y2="723" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#B9C0CA"/>
+    </linearGradient>
+    <filter id="shadow" x="180" y="280" width="664" height="416" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="20"/>
+      <feGaussianBlur stdDeviation="18"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.02 0 0 0 0 0.04 0 0 0 0 0.11 0 0 0 0.28 0"/>
+      <feBlend mode="normal" in2="SourceGraphic" result="shape"/>
+    </filter>
+    <g id="star">
+      <path d="M0 -28L7.2 -9.9L26.6 -8.6L11.4 3.1L16.5 21.3L0 10.5L-16.5 21.3L-11.4 3.1L-26.6 -8.6L-7.2 -9.9L0 -28Z" fill="#E6C04A"/>
+      <path d="M0 -21L5.4 -7.3L20 -6.4L8 2.5L12 16.1L0 8.1L-12 16.1L-8 2.5L-20 -6.4L-5.4 -7.3L0 -21Z" fill="#FFED98"/>
+    </g>
+    <path id="topArc" d="M196 512C196 337.487 337.487 196 512 196C686.513 196 828 337.487 828 512"/>
+    <path id="bottomArc" d="M828 512C828 686.513 686.513 828 512 828C337.487 828 196 686.513 196 512"/>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bgGlow)"/>
+
+  <circle cx="512" cy="512" r="389" fill="white" stroke="black" stroke-width="12"/>
+  <circle cx="512" cy="512" r="279" fill="white" stroke="black" stroke-width="8"/>
+
+  <mask id="innerMask">
+    <circle cx="512" cy="512" r="276" fill="white"/>
+  </mask>
+
+  <g mask="url(#innerMask)">
+    <rect x="231" y="230" width="562" height="284" fill="url(#sky)"/>
+    <rect x="231" y="656" width="562" height="147" fill="url(#ground)"/>
+
+    <g filter="url(#shadow)">
+      <path d="M243 633L369 509C385 493 408 487 425 500L495 557L619 442C657 407 711 406 750 440L781 468V660H243V633Z" fill="url(#mountain)" stroke="black" stroke-width="3"/>
+      <path d="M231 660L322 543C342 518 379 515 402 538L491 625L231 660Z" fill="url(#mountain)" stroke="black" stroke-width="3"/>
+    </g>
+
+    <g transform="translate(405 335) scale(1.1)">
+      <use href="#star"/>
+    </g>
+    <g transform="translate(512 300) scale(1.1)">
+      <use href="#star"/>
+    </g>
+    <g transform="translate(619 335) scale(1.1)">
+      <use href="#star"/>
+    </g>
+  </g>
+
+  <text font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" letter-spacing="3.5" fill="black">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">EASTERN MINDANAO COMMAND</textPath>
+  </text>
+  <text font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="700" letter-spacing="12" fill="black">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">AFP</textPath>
+  </text>
+</svg>

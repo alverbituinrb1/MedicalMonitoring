@@ -3,19 +3,16 @@ import './CalendarView.css';
 
 const DEFAULT_ITEMS_PER_PAGE = 6;
 const PAGE_SIZE_OPTIONS = [6, 10, 15];
+const MONTH_CARD_LIMIT = 6;
 
 const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
+  const currentMonthNumber = new Date().getMonth() + 1;
   const [activeTab, setActiveTab] = useState('medical');
-  const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState('All');
+  const [selectedBirthdayMonth, setSelectedBirthdayMonth] = useState(String(currentMonthNumber));
   const [medicalQuery, setMedicalQuery] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [activeMedicalSection, setActiveMedicalSection] = useState('overdue');
-  const [medicalPages, setMedicalPages] = useState({
-    overdue: 1,
-    dueSoon: 1,
-    upcoming: 1
-  });
-  const currentMonthNumber = new Date().getMonth() + 1;
+  const [medicalPages, setMedicalPages] = useState({ overdue: 1, dueSoon: 1, upcoming: 1 });
 
   const normalizedMedicalSchedule = [...medicalSchedule].sort((left, right) => {
     if (left.daysUntil !== right.daysUntil) return left.daysUntil - right.daysUntil;
@@ -90,15 +87,24 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
     })
   }));
 
-  const displayedBirthdayGroups = (selectedBirthdayMonth === 'All'
-    ? normalizedBirthdayGroups
-    : normalizedBirthdayGroups.filter((group) => String(group.monthNumber) === selectedBirthdayMonth))
+  const orderedBirthdayGroups = [...normalizedBirthdayGroups].sort((left, right) => {
+    const leftOffset = (left.monthNumber - currentMonthNumber + 12) % 12;
+    const rightOffset = (right.monthNumber - currentMonthNumber + 12) % 12;
+    return leftOffset - rightOffset;
+  });
+
+  const selectedBirthdayGroup = normalizedBirthdayGroups.find(
+    (group) => String(group.monthNumber) === selectedBirthdayMonth
+  ) || orderedBirthdayGroups[0] || null;
+
+  const birthdayPreviewGroups = orderedBirthdayGroups.slice(0, MONTH_CARD_LIMIT);
+  const nextBirthdayEntry = orderedBirthdayGroups
+    .flatMap((group) => group.entries.map((entry) => ({ ...entry, month: group.month, monthNumber: group.monthNumber })))
     .sort((left, right) => {
-      if (selectedBirthdayMonth !== 'All') return left.monthNumber - right.monthNumber;
-      const leftOffset = (left.monthNumber - currentMonthNumber + 12) % 12;
-      const rightOffset = (right.monthNumber - currentMonthNumber + 12) % 12;
+      const leftOffset = ((left.monthNumber - currentMonthNumber + 12) % 12) * 100 + left.day;
+      const rightOffset = ((right.monthNumber - currentMonthNumber + 12) % 12) * 100 + right.day;
       return leftOffset - rightOffset;
-    });
+    })[0] || null;
 
   const handleMedicalPageChange = (key, nextPage, totalPages) => {
     const safePage = Math.min(Math.max(nextPage, 1), totalPages);
@@ -123,7 +129,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
       <div className="schedule-item-primary">
         <div className="item-details">
           <div className="calendar-item-name">{item.name}</div>
-          <div className="calendar-item-meta">{item.agency} â€¢ {item.unit}</div>
+          <div className="calendar-item-meta">{item.agency} • {item.unit}</div>
         </div>
       </div>
       <div className="schedule-item-secondary">
@@ -137,7 +143,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
         </div>
         <div className="schedule-item-block urgency">
           <span className="calendar-item-date-label">Time Remaining</span>
-          <span className={`calendar-days-late ${variant === 'neutral' ? 'neutral' : ''}`}>{timingText}</span>
+          <span className={`calendar-days-late ${variant === 'neutral' ? 'neutral' : variant}`}>{timingText}</span>
         </div>
       </div>
     </div>
@@ -204,6 +210,7 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
         <div className="calendar-title-group">
           <p className="calendar-view-kicker">Schedule Management</p>
           <h1>Calendar Center</h1>
+          <div className="calendar-title-badge">Operational planning dashboard</div>
         </div>
         <p className="calendar-view-copy">
           Review medical schedule deadlines and employee birthday records in a dedicated workspace.
@@ -236,12 +243,14 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
 
       <div className="calendar-tabs">
         <button
+          type="button"
           className={`calendar-tab ${activeTab === 'medical' ? 'active' : ''}`}
           onClick={() => setActiveTab('medical')}
         >
           Medical Schedule
         </button>
         <button
+          type="button"
           className={`calendar-tab ${activeTab === 'birthdays' ? 'active' : ''}`}
           onClick={() => setActiveTab('birthdays')}
         >
@@ -350,13 +359,6 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
             </div>
 
             <div className="birthday-filter-row">
-              <button
-                type="button"
-                className={`birthday-filter-chip ${selectedBirthdayMonth === 'All' ? 'active' : ''}`}
-                onClick={() => setSelectedBirthdayMonth('All')}
-              >
-                All Months
-              </button>
               {birthdaysByMonth.map((group) => (
                 <button
                   key={group.month}
@@ -369,33 +371,69 @@ const CalendarView = ({ birthdaysByMonth, medicalSchedule }) => {
               ))}
             </div>
 
-            <div className="calendar-birthday-grid">
-              {displayedBirthdayGroups.map((group) => (
-                <div key={group.month} className="calendar-month-card">
-                  <div className="calendar-month-header">
-                    <div className="calendar-month-title">
-                      <h3>{group.month}</h3>
-                      <p>{group.count} celebrator{group.count === 1 ? '' : 's'}</p>
-                    </div>
-                    <span className="month-count">{String(group.monthNumber).padStart(2, '0')}</span>
-                  </div>
-                  {group.entries.length > 0 ? (
-                    <div className="calendar-month-list">
-                      {group.entries.map((entry) => (
-                        <div key={entry.id} className="calendar-month-entry">
-                          <div className="calendar-month-day">{String(entry.day).padStart(2, '0')}</div>
-                          <div className="entry-details">
-                            <div className="calendar-item-name">{entry.name}</div>
-                            <div className="calendar-item-meta">{entry.agency} â€¢ {entry.unit}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="calendar-empty">No birthdays recorded.</div>
-                  )}
+            <div className="birthday-dashboard">
+              <div className="birthday-overview-rail">
+                <div className="birthday-spotlight-card">
+                  <span className="birthday-spotlight-label">Selected Month</span>
+                  <strong>{selectedBirthdayGroup?.month || 'No Month Selected'}</strong>
+                  <p>
+                    {selectedBirthdayGroup
+                      ? `${selectedBirthdayGroup.count} celebrator${selectedBirthdayGroup.count === 1 ? '' : 's'} tracked.`
+                      : 'Birthday data is not available.'}
+                  </p>
                 </div>
-              ))}
+
+                <div className="birthday-spotlight-card upcoming">
+                  <span className="birthday-spotlight-label">Next Celebrator</span>
+                  <strong>{nextBirthdayEntry ? `${nextBirthdayEntry.month} ${String(nextBirthdayEntry.day).padStart(2, '0')}` : 'No records'}</strong>
+                  <p>{nextBirthdayEntry ? nextBirthdayEntry.name : 'There are no upcoming birthdays to display.'}</p>
+                </div>
+
+                <div className="birthday-month-preview-grid">
+                  {birthdayPreviewGroups.map((group) => (
+                    <button
+                      key={group.month}
+                      type="button"
+                      className={`birthday-month-preview ${selectedBirthdayMonth === String(group.monthNumber) ? 'active' : ''}`}
+                      onClick={() => setSelectedBirthdayMonth(String(group.monthNumber))}
+                    >
+                      <span>{group.month}</span>
+                      <strong>{group.count}</strong>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="calendar-month-card featured">
+                <div className="calendar-month-header">
+                  <div className="calendar-month-title">
+                    <h3>{selectedBirthdayGroup?.month || 'Birthday Records'}</h3>
+                    <p>
+                      {selectedBirthdayGroup
+                        ? `${selectedBirthdayGroup.count} celebrator${selectedBirthdayGroup.count === 1 ? '' : 's'}`
+                        : 'No birthday records available'}
+                    </p>
+                  </div>
+                  <span className="month-count">
+                    {selectedBirthdayGroup ? String(selectedBirthdayGroup.monthNumber).padStart(2, '0') : '--'}
+                  </span>
+                </div>
+                {selectedBirthdayGroup?.entries?.length ? (
+                  <div className="calendar-month-list compact">
+                    {selectedBirthdayGroup.entries.map((entry) => (
+                      <div key={entry.id} className="calendar-month-entry">
+                        <div className="calendar-month-day">{String(entry.day).padStart(2, '0')}</div>
+                        <div className="entry-details">
+                          <div className="calendar-item-name">{entry.name}</div>
+                          <div className="calendar-item-meta">{entry.agency} • {entry.unit}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="calendar-empty">No birthdays recorded for this month.</div>
+                )}
+              </div>
             </div>
           </section>
         )}
