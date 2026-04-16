@@ -40,7 +40,7 @@ const LoadingPage = () => {
             <circle cx="50" cy="50" r="45" className="spinner-indicator"></circle>
           </svg>
         </div>
-        <h2 className="loading-title">APE MONITORING</h2>
+        <h2 className="loading-title">MEDCAR MONITORING</h2>
         <p className="loading-subtitle">{loadingText}</p>
         <div className="loading-progress-bar">
           <div className="progress-fill"></div>
