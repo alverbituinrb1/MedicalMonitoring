@@ -177,6 +177,9 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
       case 'lastMedical':
         if (!formData.lastMedicalDate || !formData.medicalExamLocation.trim()) return 'Please fill in the date of last medical exam and location.';
         break;
+      case 'scan':
+        if (!formData.scanFileName) return 'Please upload a medical certificate scan.';
+        break;
       default:
         break;
     }
