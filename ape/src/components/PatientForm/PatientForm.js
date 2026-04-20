@@ -75,8 +75,6 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
     gender: '',
     designation: '',
     unit: '',
-    agency: '',
-    bloodType: '',
     height: '',
     weight: '',
     fitnessStatus: 'Personal Fitness 1: Fully Exercise',
@@ -169,7 +167,7 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
         if (!formData.gender) return 'Please select a gender.';
         break;
       case 'employment':
-        if (!formData.designation.trim() || !formData.unit.trim() || !formData.agency.trim()) return 'Please fill in designation, unit, and agency.';
+        if (!formData.designation.trim() || !formData.unit.trim()) return 'Please fill in designation and unit.';
         break;
       case 'physical':
         if (!String(formData.height).trim() || !String(formData.weight).trim()) return 'Please fill in height and weight.';
@@ -233,8 +231,6 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         designation: formData.designation || 'N/A',
         unit: formData.unit || 'N/A',
-        agency: formData.agency || 'N/A',
-        bloodType: formData.bloodType || 'N/A',
         age: formData.age || 'N/A',
         birthday: formData.birthday || 'N/A',
         gender: formData.gender || 'Not Specified',
@@ -391,16 +387,6 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
                   className="form-input" 
                   placeholder="e.g. IT Department" 
                 />
-
-                <label style={{marginTop: '15px'}}>Agency / Company</label>
-                <input 
-                  type="text" 
-                  name="agency"
-                  value={formData.agency}
-                  onChange={handleChange}
-                  className="form-input" 
-                  placeholder="e.g. Acme Corp" 
-                />
               </div>
             )}
 
@@ -422,25 +408,6 @@ const PatientForm = ({ onAddPersonnel, navigateBack }) => {
                     <span style={{color: getVitalStatus('weight', formData.weight, formData.height).color, fontSize: '0.8rem', fontWeight: 'bold', position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)'}}>{getVitalStatus('weight', formData.weight, formData.height).label}</span>
                   )}
                 </div>
-                
-                <label>Blood Type</label>
-                <select 
-                  name="bloodType"
-                  value={formData.bloodType}
-                  onChange={handleChange}
-                  className="form-input"
-                  style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)' }}
-                >
-                  <option value="">Select Blood Type (Optional)</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                </select>
 
                 <div style={{ marginTop: '25px', padding: '15px', border: '1px solid rgba(96, 165, 250, 0.3)', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.4)' }}>
                   <label style={{ color: '#60a5fa', fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>Automated Fitness Classification</label>

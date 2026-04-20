@@ -842,7 +842,7 @@ function App() {
                             <div className="birthday-popover-day">{String(entry.day).padStart(2, '0')}</div>
                             <div className="birthday-popover-meta">
                               <strong>{entry.name}</strong>
-                              <span>{entry.agency} / {entry.unit}</span>
+                              <span>{entry.unit}</span>
                             </div>
                           </div>
                         ))}

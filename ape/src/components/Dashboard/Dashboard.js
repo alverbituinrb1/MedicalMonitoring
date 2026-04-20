@@ -630,7 +630,7 @@ const Dashboard = ({
                 >
                   <div className="focused-status-main">
                     <strong>{person.name}</strong>
-                    <span>{person.agency || 'N/A'} / {person.unit || 'N/A'}</span>
+                    <span>{person.unit || 'N/A'}</span>
                   </div>
                   <div className="focused-status-side">
                     <span>{person.nextMedicalDate}</span>
@@ -670,7 +670,7 @@ const Dashboard = ({
                         <div className="deleted-log-main">
                           <strong>{payload.name || 'Unknown Personnel'}</strong>
                           <span>
-                            #{entry.originalId} / {payload.agency || 'N/A'} / {payload.unit || 'N/A'}
+                            #{entry.originalId} / {payload.unit || 'N/A'}
                             {isMedicalUpdateSnapshot ? ' / Previous medical version' : ''}
                           </span>
                         </div>
@@ -1035,8 +1035,6 @@ const Dashboard = ({
                   <div className="detail-row"><span className="detail-label">Age</span><span className="detail-value">{selectedPersonnel.age}</span></div>
                   <div className="detail-row"><span className="detail-label">Designation</span><span className="detail-value">{selectedPersonnel.designation}</span></div>
                   <div className="detail-row"><span className="detail-label">Unit/Office</span><span className="detail-value">{selectedPersonnel.unit}</span></div>
-                  <div className="detail-row"><span className="detail-label">Agency</span><span className="detail-value">{selectedPersonnel.agency}</span></div>
-                  <div className="detail-row"><span className="detail-label">Blood Type</span><span className="detail-value">{selectedPersonnel.bloodType || 'N/A'}</span></div>
                 </div>
                 <div className="detail-card">
                   <h3>Medical Summary</h3>
@@ -1118,7 +1116,6 @@ const Dashboard = ({
                 <div className="detail-row"><span className="detail-label">Gender</span><span className="detail-value">{selectedDeletedEntry.payload?.gender || 'N/A'}</span></div>
                 <div className="detail-row"><span className="detail-label">Birthday</span><span className="detail-value">{selectedDeletedEntry.payload?.birthday || 'N/A'}</span></div>
                 <div className="detail-row"><span className="detail-label">Age</span><span className="detail-value">{selectedDeletedEntry.payload?.age || 'N/A'}</span></div>
-                <div className="detail-row"><span className="detail-label">Agency</span><span className="detail-value">{selectedDeletedEntry.payload?.agency || 'N/A'}</span></div>
                 <div className="detail-row"><span className="detail-label">Unit</span><span className="detail-value">{selectedDeletedEntry.payload?.unit || 'N/A'}</span></div>
                 <div className="detail-row"><span className="detail-label">Deleted At</span><span className="detail-value">{selectedDeletedEntry.deletedAt ? new Date(selectedDeletedEntry.deletedAt).toLocaleString() : 'Unknown time'}</span></div>
                 <div className="detail-row"><span className="detail-label">Source</span><span className="detail-value">{selectedDeletedEntry.deletedFromArchive ? 'Trashbin / Archived' : 'Active Records'}</span></div>
